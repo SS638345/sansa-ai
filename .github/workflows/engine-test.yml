@@ -1,0 +1,90 @@
+name: Engine test
+
+# Builds the SANSA engine Docker image, runs it, and transcribes test audio.
+# Also runs Whisper small (the on-device model) on the same audio to compare.
+on:
+  workflow_dispatch:
+    inputs:
+      language:
+        description: Language code (ta, hi, te, ...)
+        default: ta
+      audio_key:
+        description: Optional key to decrypt engine/testdata/private.enc on this branch
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Hide key
+        run: |
+          KEY=$(jq -r '.inputs.audio_key // ""' "$GITHUB_EVENT_PATH")
+          if [ -n "$KEY" ]; then echo "::add-mask::$KEY"; fi
+      - uses: actions/checkout@v4
+      - name: Prepare test audio
+        env:
+          LANG_CODE: ${{ inputs.language }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
+          pip install -q gTTS
+          mkdir -p /tmp/audio
+          python3 - <<'PY'
+          from gtts import gTTS
+          text = "இன்று காலை நான் சந்தைக்கு சென்று காய்கறிகள் வாங்கினேன். மழை பெய்ததால் கொஞ்சம் தாமதமாக வீட்டுக்கு வந்தேன்."
+          open("/tmp/audio/known.txt", "w").write(text)
+          gTTS(text, lang="ta").save("/tmp/audio/known.mp3")
+          PY
+          KEY=$(jq -r '.inputs.audio_key // ""' "$GITHUB_EVENT_PATH")
+          if [ -n "$KEY" ] && [ -f engine/testdata/private.enc ]; then
+            openssl enc -d -aes-256-cbc -pbkdf2 -in engine/testdata/private.enc -out /tmp/audio/private.flac -pass "pass:$KEY"
+          fi
+          ls -la /tmp/audio
+      - name: Build engine image
+        run: docker build -t sansa-engine engine
+      - name: Start engine
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          docker run -d --name eng -p 7860:7860 -e HF_TOKEN sansa-engine
+          for i in $(seq 1 120); do
+            if curl -sf localhost:7860/ ; then echo; echo "ready after $((i*10)) s"; exit 0; fi
+            if [ "$(docker inspect -f '{{.State.Running}}' eng)" != "true" ]; then break; fi
+            sleep 10
+          done
+          docker logs eng 2>&1 | tail -60
+          exit 1
+      - name: Transcribe with SANSA engine
+        env:
+          LANG_CODE: ${{ inputs.language }}
+        run: |
+          pip install -q requests
+          for f in /tmp/audio/*.mp3 /tmp/audio/*.flac; do
+            [ -f "$f" ] || continue
+            echo "=== $(basename "$f") ==="
+            python3 engine/test_client.py "$f" "$LANG_CODE" || { docker logs eng 2>&1 | tail -40; exit 1; }
+          done
+          echo "Expected (known.mp3): $(cat /tmp/audio/known.txt)"
+      - name: Compare with Whisper small (on-device model)
+        if: always()
+        env:
+          LANG_CODE: ${{ inputs.language }}
+        run: |
+          pip install -q --index-url https://download.pytorch.org/whl/cpu torch==2.5.1
+          pip install -q transformers==4.46.3
+          python3 - <<'PY'
+          import glob, os, subprocess, numpy as np
+          from transformers import pipeline
+          asr = pipeline("automatic-speech-recognition", model="openai/whisper-small", chunk_length_s=30)
+          for f in sorted(glob.glob("/tmp/audio/*.mp3") + glob.glob("/tmp/audio/*.flac")):
+              pcm = subprocess.run(["ffmpeg", "-v", "quiet", "-i", f, "-ac", "1", "-ar", "16000", "-f", "f32le", "-"], capture_output=True).stdout
+              audio = np.frombuffer(pcm, dtype=np.float32)
+              out = asr(audio, generate_kwargs={"language": os.environ["LANG_CODE"], "task": "transcribe"})
+              print(f"=== {os.path.basename(f)} (whisper-small) ===\n{out['text']}\n")
+          PY
+      - name: Engine logs
+        if: always()
+        run: docker logs eng 2>&1 | tail -30 || true
