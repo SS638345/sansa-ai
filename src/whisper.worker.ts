@@ -51,7 +51,7 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
     const asr = await load(model);
     post({ type: "status", status: "transcribing" });
     const out = await asr(audio, {
-      language,
+      ...(language ? { language } : {}),
       task: "transcribe",
       chunk_length_s: 30,
       stride_length_s: 5,
