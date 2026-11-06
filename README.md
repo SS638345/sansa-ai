@@ -11,6 +11,16 @@ Simple voice to text converter. Pesunga, text aagidum. Tamil + English.
 - Installable: on Android Chrome use "Add to Home screen" to get an app icon.
 - Edit the text, copy it, or download it as `.txt`. The text is kept in your browser if you reload.
 
+## Accurate mode: Sarvam AI
+
+Upload and Record can use [Sarvam AI](https://www.sarvam.ai) (`saarika:v2.5`), which is trained on Indian languages and is far more accurate than the free on-device model for Tamil, Hindi, Telugu, Kannada, Malayalam, Bengali, Marathi, Gujarati, Punjabi, Odia and Indian English. Long files are split into ≤25 s pieces at quiet points (Sarvam's per-request limit is 30 s).
+
+The key is never part of the public site:
+- **Personal use:** paste your key in the app (Speech engine → Sarvam AI). It is stored only in your browser.
+- **For all visitors:** deploy `proxy/worker.js` to Cloudflare Workers with the key as a secret, then set the repo variable `VITE_SARVAM_PROXY_URL` to the worker URL. The key field then disappears.
+
+Languages Sarvam doesn't cover (Urdu, Assamese, Nepali, Sanskrit, Sindhi) fall back to the free engine automatically.
+
 ## Run it
 
 Needs Node.js 20+ (and ffmpeg only if you upload unusual formats).
