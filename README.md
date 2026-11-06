@@ -5,8 +5,8 @@ Simple voice to text converter. Pesunga, text aagidum. Tamil + English.
 ## Features
 
 - **Live mic (free):** words appear while you speak. Uses the browser's built-in speech engine (Chrome, Edge, Android Chrome, Safari). No API key, no cost.
-- **Record & convert (AI):** record a clip, then the whole clip is converted with OpenAI `gpt-4o-mini-transcribe`. Better for long talks.
-- **Upload audio (AI):** mp3, m4a, wav, ogg, webm, WhatsApp voice notes (up to 25 MB). Other formats are converted with ffmpeg.
+- **Record & convert / Upload audio (free):** mp3, m4a, wav, ogg, webm, WhatsApp voice notes (up to 25 MB). Runs OpenAI Whisper on your own device with transformers.js, so it works on the static site with no key. The model downloads once (Fast ≈80 MB, More accurate ≈250 MB) and is cached.
+- **Optional server AI:** if the Node server has `OPENAI_API_KEY`, those two tabs use OpenAI `gpt-4o-mini-transcribe` instead (paid, usually more accurate, ffmpeg converts odd formats).
 - Languages: Tamil (`ta-IN`), English India (`en-IN`), English US (`en-US`).
 - Edit the text, copy it, or download it as `.txt`. The text is kept in your browser if you reload.
 
