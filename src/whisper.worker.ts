@@ -23,7 +23,10 @@ function load(model: string) {
   const hasGpu = typeof navigator !== "undefined" && "gpu" in navigator;
   const asr = pipeline("automatic-speech-recognition", model, {
     device: hasGpu ? "webgpu" : "wasm",
-    dtype: hasGpu ? { encoder_model: "fp32", decoder_model_merged: "q4" } : "q8",
+    // Full-precision encoder: quantizing it costs a lot of accuracy on Indian languages.
+    dtype: hasGpu
+      ? { encoder_model: model.includes("large") ? "fp16" : "fp32", decoder_model_merged: "q4" }
+      : { encoder_model: model.includes("large") ? "q8" : "fp32", decoder_model_merged: "q8" },
     progress_callback: (p: { status: string; file?: string; loaded?: number; total?: number }) => {
       if (p.status === "progress" && p.file) {
         files.set(p.file, { loaded: p.loaded ?? 0, total: p.total ?? 0 });
@@ -55,6 +58,8 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
       task: "transcribe",
       chunk_length_s: 30,
       stride_length_s: 5,
+      // Stops the "same phrase repeated" loops Whisper falls into on noisy audio.
+      no_repeat_ngram_size: 4,
     });
     const text = Array.isArray(out) ? out.map((o) => o.text).join(" ") : out.text;
     post({ type: "done", text: text.trim() });
