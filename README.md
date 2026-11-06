@@ -51,4 +51,5 @@ The audio helpers and recorder hook are adapted from the earlier SANSA AI projec
 ## Launch
 
 - **GitHub Pages (free):** `.github/workflows/pages.yml` builds and publishes the app on every push to `main`. Live mic works there; the AI tabs stay off because Pages has no server. In repo Settings → Pages, set Source to "GitHub Actions" if the first run asks for it.
+- **Custom domain (e.g. voice.sansaai.in):** add a DNS CNAME record `voice` → `ss638345.github.io`, then enter the domain in Settings → Pages → Custom domain and tick Enforce HTTPS. The build uses relative paths, so no code change is needed.
 - **With AI modes:** run `npm run build && npm start` on any Node host (Render, Railway, a VPS) and set `OPENAI_API_KEY`.
