@@ -4,7 +4,7 @@ import { liveDictationSupported, useLiveDictation } from "./hooks/useLiveDictati
 import { useVoiceRecorder } from "./hooks/useVoiceRecorder";
 import { LOCAL_MODELS, transcribeLocally, type LocalProgress } from "./localWhisper";
 import { SARVAM_PROXY_URL, sarvamSupports, transcribeWithSarvam } from "./sarvam";
-import { SANSA_ENGINE_URL, sansaSupports, transcribeWithSansa } from "./sansaEngine";
+import { SANSA_ENGINE_URL, SansaLanguageUnavailable, sansaSupports, transcribeWithSansa } from "./sansaEngine";
 
 // id: browser live-mic language tag. api: Whisper code for upload/record, or null when
 // Whisper has no model for that language (e.g. Odia), so only live mic can be offered.
@@ -109,7 +109,12 @@ export default function App() {
       // Sarvam AI (most accurate for Indian languages) when chosen and supported;
       // else server OpenAI when configured; else free on-device Whisper.
       const out = useSansa
-        ? await transcribeWithSansa(audio, lang.id, sansaUrl!, (done, total) => setPieces({ done, total }))
+        ? await transcribeWithSansa(audio, lang.id, sansaUrl!, (done, total) => setPieces({ done, total })).catch((e) => {
+            // Engine has no model for this language yet: fall back to the free on-device engine.
+            if (!(e instanceof SansaLanguageUnavailable)) throw e;
+            setPieces(null);
+            return transcribeLocally(audio, lang.api ?? "", localModel, setProgress);
+          })
         : useSarvam
         ? await transcribeWithSarvam(audio, lang.id, sarvamKey.trim() || null, (done, total) => setPieces({ done, total }))
         : status.ai

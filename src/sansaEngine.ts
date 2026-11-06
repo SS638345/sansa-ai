@@ -1,6 +1,6 @@
 /**
- * Client for the self-hosted SANSA speech engine (engine/ folder, AI4Bharat
- * IndicConformer on a free Hugging Face Space). Same piece-by-piece flow as Sarvam.
+ * Client for the self-hosted SANSA speech engine (engine/ folder on a free
+ * Hugging Face Space). Same piece-by-piece flow as Sarvam.
  */
 import { decodeTo16kMono } from "./localWhisper";
 import { splitOnSilence, toWav } from "./sarvam";
@@ -12,6 +12,9 @@ const LANGS: Record<string, string> = {
   "mr-IN": "mr", "gu-IN": "gu", "pa-IN": "pa", "ur-IN": "ur", "or-IN": "or", "as-IN": "as",
   "ne-NP": "ne", "sa-IN": "sa", "sd-IN": "sd",
 };
+
+/** The engine is up but has no model for this language (e.g. no HF_TOKEN for IndicConformer). */
+export class SansaLanguageUnavailable extends Error {}
 
 export const sansaSupports = (langId: string) => langId in LANGS;
 
@@ -44,6 +47,9 @@ export async function transcribeWithSansa(
     }
     if (!res) throw new Error("Could not reach the SANSA engine. It may be starting up; try again in a minute.");
     const data = (await res.json().catch(() => ({}))) as { transcript?: string; detail?: string };
+    if (res.status === 400 && i === 0 && /not available/i.test(data.detail ?? "")) {
+      throw new SansaLanguageUnavailable(data.detail);
+    }
     if (!res.ok) throw new Error(data.detail ?? `SANSA engine error (${res.status}).`);
     texts.push((data.transcript ?? "").trim());
   }
