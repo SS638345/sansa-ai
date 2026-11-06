@@ -8,6 +8,8 @@ const LANGUAGES = [
   { id: "ta-IN", api: "ta", label: "தமிழ் (Tamil)" },
   { id: "en-IN", api: "en", label: "English (India)" },
   { id: "en-US", api: "en", label: "English (US)" },
+  // Auto-detect lets Whisper handle Tamil + English mixed audio; live mic falls back to Tamil.
+  { id: "auto", api: "", label: "Tamil + English mixed (auto, upload/record)" },
 ] as const;
 
 type Mode = "live" | "record" | "upload";
@@ -54,7 +56,7 @@ export default function App() {
     setText((prev) => (prev && !prev.endsWith("\n") ? `${prev} ${chunk}` : prev + chunk));
   };
 
-  const live = useLiveDictation(lang.id, append);
+  const live = useLiveDictation(lang.id === "auto" ? "ta-IN" : lang.id, append);
   const recorder = useVoiceRecorder();
 
   const runTranscribe = async (audio: Blob) => {
