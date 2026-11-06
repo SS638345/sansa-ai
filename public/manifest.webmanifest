@@ -1,7 +1,7 @@
 {
   "name": "SANSA Voice to Text",
   "short_name": "SANSA Voice",
-  "description": "Free Tamil and English voice to text converter.",
+  "description": "Free voice to text for Tamil, Hindi and other Indian languages.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
