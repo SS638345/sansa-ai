@@ -119,11 +119,23 @@ export default function App() {
   const aiOff = !status.ai && mode !== "live";
 
   return (
-    <main className="app">
-      <header>
-        <h1>SANSA Voice to Text</h1>
-        <p className="sub">Pesunga, text aagidum. Tamil + English.</p>
+    <div className="page">
+      <nav className="nav">
+        <a className="brand" href="./">
+          <span className="mark" aria-hidden="true">S</span>
+          <span>SANSA <b>Voice</b></span>
+        </a>
+        <span className={`pill ${status.ai ? "ok" : ""}`}>{status.ai ? "AI on" : "Free mode"}</span>
+      </nav>
+
+      <header className="hero">
+        <h1>
+          Pesunga. <span className="grad">Text aagidum.</span>
+        </h1>
+        <p className="sub">Tamil and English voice to text, right in your browser. No sign up, no install.</p>
       </header>
+
+      <main className="app">
 
       <section className="card controls">
         <label className="field">
@@ -229,6 +241,27 @@ export default function App() {
           </button>
         </div>
       </section>
-    </main>
+      </main>
+
+      <section className="features" aria-label="Features">
+        <div>
+          <h3>Live typing</h3>
+          <p>Words appear while you speak. Free in Chrome and Android.</p>
+        </div>
+        <div>
+          <h3>Tamil + English</h3>
+          <p>Switch language anytime. Edit the text before you copy it.</p>
+        </div>
+        <div>
+          <h3>Private</h3>
+          <p>No account. Your text is kept only in your own browser.</p>
+        </div>
+      </section>
+
+      <footer className="foot">
+        <span>© {new Date().getFullYear()} SANSA AI</span>
+        <a href="https://sansaai.in" target="_blank" rel="noreferrer">sansaai.in</a>
+      </footer>
+    </div>
   );
 }
