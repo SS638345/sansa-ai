@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { getStatus, transcribe, type Status } from "./api";
 import { liveDictationSupported, useLiveDictation } from "./hooks/useLiveDictation";
 import { useVoiceRecorder } from "./hooks/useVoiceRecorder";
+import { LOCAL_MODELS, transcribeLocally, type LocalProgress } from "./localWhisper";
 
 const LANGUAGES = [
   { id: "ta-IN", api: "ta", label: "தமிழ் (Tamil)" },
@@ -35,6 +36,8 @@ export default function App() {
   const [text, setText] = useState(() => load(STORAGE_KEY, ""));
   const [status, setStatus] = useState<Status>({ ai: false, model: null });
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<LocalProgress | null>(null);
+  const [localModel, setLocalModel] = useState(() => load("vtt.model", LOCAL_MODELS[0].id));
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -44,6 +47,7 @@ export default function App() {
   }, []);
   useEffect(() => save(STORAGE_KEY, text), [text]);
   useEffect(() => save("vtt.lang", langId), [langId]);
+  useEffect(() => save("vtt.model", localModel), [localModel]);
 
   const append = (chunk: string) => {
     if (!chunk) return;
@@ -58,11 +62,17 @@ export default function App() {
     setBusy(true);
     setError(null);
     try {
-      append(await transcribe(audio, lang.api));
+      // Server AI when an OpenAI key is configured; otherwise free on-device Whisper.
+      const out = status.ai
+        ? await transcribe(audio, lang.api)
+        : await transcribeLocally(audio, lang.api, localModel, setProgress);
+      if (!out) setError("No speech found in this audio.");
+      append(out);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Transcription failed.");
     } finally {
       setBusy(false);
+      setProgress(null);
     }
   };
 
@@ -116,7 +126,14 @@ export default function App() {
   };
 
   const shownError = error ?? live.error;
-  const aiOff = !status.ai && mode !== "live";
+  const busyText =
+    progress?.stage === "decoding"
+      ? "Reading audio…"
+      : progress?.stage === "loading"
+        ? progress.percent != null && progress.percent < 100
+          ? `Downloading speech model… ${progress.percent}%`
+          : "Loading speech model…"
+        : "Converting to text…";
 
   return (
     <div className="page">
@@ -154,10 +171,10 @@ export default function App() {
             Live mic <small>free</small>
           </button>
           <button role="tab" aria-selected={mode === "record"} onClick={() => switchMode("record")}>
-            Record &amp; convert <small>AI</small>
+            Record &amp; convert <small>{status.ai ? "AI" : "free"}</small>
           </button>
           <button role="tab" aria-selected={mode === "upload"} onClick={() => switchMode("upload")}>
-            Upload audio <small>AI</small>
+            Upload audio <small>{status.ai ? "AI" : "free"}</small>
           </button>
         </div>
 
@@ -187,9 +204,9 @@ export default function App() {
             <button
               className={`mic ${recorder.state === "recording" ? "on" : ""}`}
               onClick={toggleRecord}
-              disabled={aiOff || busy}
+              disabled={busy}
             >
-              {busy ? "Converting…" : recorder.state === "recording" ? "■ Stop & convert" : "● Record"}
+              {busy ? "Working…" : recorder.state === "recording" ? "■ Stop & convert" : "● Record"}
             </button>
             <p className="hint">Record first, then the whole clip is converted. More accurate for long talks.</p>
           </div>
@@ -197,22 +214,37 @@ export default function App() {
 
         {mode === "upload" && (
           <div className="action">
-            <label className={`upload ${aiOff || busy ? "disabled" : ""}`}>
+            <label className={`upload ${busy ? "disabled" : ""}`}>
               <input
                 ref={fileRef}
                 type="file"
                 accept="audio/*,video/*,.m4a,.mp3,.wav,.ogg,.webm,.flac,.mp4"
-                disabled={aiOff || busy}
+                disabled={busy}
                 onChange={(e) => void onFile(e.target.files?.[0])}
               />
-              {busy ? "Converting…" : "Choose audio file"}
+              {busy ? "Working…" : "Choose audio file"}
             </label>
-            <p className="hint">mp3, m4a, wav, ogg, webm, WhatsApp voice notes. Max 25 MB.</p>
+            <p className="hint">mp3, m4a, wav, ogg, webm, WhatsApp voice notes. Max 25 MB. First time, the speech model downloads once.</p>
           </div>
         )}
 
-        {aiOff && (
-          <p className="notice">AI mode is off. Add an OpenAI API key on the server (see README) to enable this.</p>
+        {mode !== "live" && !status.ai && (
+          <label className="field">
+            <span>Speech model (runs free on your device, downloads once)</span>
+            <select value={localModel} onChange={(e) => setLocalModel(e.target.value)} disabled={busy}>
+              {LOCAL_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {busy && (
+          <p className="notice" role="status">
+            {busyText}
+            {progress?.stage === "transcribing" && " Long files can take a few minutes."}
+          </p>
         )}
         {shownError && <p className="error" role="alert">{shownError}</p>}
       </section>
