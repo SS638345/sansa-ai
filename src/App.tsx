@@ -3,6 +3,7 @@ import { getStatus, transcribe, type Status } from "./api";
 import { liveDictationSupported, useLiveDictation } from "./hooks/useLiveDictation";
 import { useVoiceRecorder } from "./hooks/useVoiceRecorder";
 import { LOCAL_MODELS, transcribeLocally, type LocalProgress } from "./localWhisper";
+import { SARVAM_PROXY_URL, sarvamSupports, transcribeWithSarvam } from "./sarvam";
 
 // id: browser live-mic language tag. api: Whisper code for upload/record, or null when
 // Whisper has no model for that language (e.g. Odia), so only live mic can be offered.
@@ -58,6 +59,9 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<LocalProgress | null>(null);
   const [localModel, setLocalModel] = useState(() => load("vtt.model", LOCAL_MODELS[0].id));
+  const [engine, setEngine] = useState<"sarvam" | "free">(() => (load("vtt.engine", "sarvam") === "free" ? "free" : "sarvam"));
+  const [sarvamKey, setSarvamKey] = useState(() => load("vtt.sarvamKey", ""));
+  const [pieces, setPieces] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -68,6 +72,8 @@ export default function App() {
   useEffect(() => save(STORAGE_KEY, text), [text]);
   useEffect(() => save("vtt.lang", langId), [langId]);
   useEffect(() => save("vtt.model", localModel), [localModel]);
+  useEffect(() => save("vtt.engine", engine), [engine]);
+  useEffect(() => save("vtt.sarvamKey", sarvamKey.trim()), [sarvamKey]);
 
   const append = (chunk: string) => {
     if (!chunk) return;
@@ -77,19 +83,25 @@ export default function App() {
   const live = useLiveDictation(lang.id === "auto" ? "ta-IN" : lang.id, append);
   const recorder = useVoiceRecorder();
 
+  const sarvamReady = Boolean(SARVAM_PROXY_URL || sarvamKey.trim());
+  const useSarvam = engine === "sarvam" && sarvamSupports(lang.id) && sarvamReady;
+
   const runTranscribe = async (audio: Blob) => {
     if (audio.size === 0) return;
-    if (lang.api === null) {
+    if (!useSarvam && lang.api === null) {
       setError(`${lang.label.split(" - ")[0]} is not supported for upload/record yet. Use Live mic.`);
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      // Server AI when an OpenAI key is configured; otherwise free on-device Whisper.
-      const out = status.ai
-        ? await transcribe(audio, lang.api ?? "")
-        : await transcribeLocally(audio, lang.api ?? "", localModel, setProgress);
+      // Sarvam AI (most accurate for Indian languages) when chosen and supported;
+      // else server OpenAI when configured; else free on-device Whisper.
+      const out = useSarvam
+        ? await transcribeWithSarvam(audio, lang.id, sarvamKey.trim() || null, (done, total) => setPieces({ done, total }))
+        : status.ai
+          ? await transcribe(audio, lang.api ?? "")
+          : await transcribeLocally(audio, lang.api ?? "", localModel, setProgress);
       if (!out) setError("No speech found in this audio.");
       append(out);
     } catch (e) {
@@ -97,6 +109,7 @@ export default function App() {
     } finally {
       setBusy(false);
       setProgress(null);
+      setPieces(null);
     }
   };
 
@@ -150,8 +163,11 @@ export default function App() {
   };
 
   const shownError = error ?? live.error;
-  const busyText =
-    progress?.stage === "decoding"
+  const busyText = pieces
+    ? pieces.total > 1
+      ? `Sarvam AI: converting part ${Math.min(pieces.done + 1, pieces.total)} of ${pieces.total}…`
+      : "Sarvam AI: converting…"
+    : progress?.stage === "decoding"
       ? "Reading audio…"
       : progress?.stage === "loading"
         ? progress.percent != null && progress.percent < 100
@@ -252,10 +268,47 @@ export default function App() {
           </div>
         )}
 
-        {mode !== "live" && lang.api === null && (
+        {mode !== "live" && (
+          <div className="field">
+            <span>Speech engine</span>
+            <div className="tabs two" role="radiogroup">
+              <button role="radio" aria-checked={engine === "sarvam"} aria-selected={engine === "sarvam"} onClick={() => setEngine("sarvam")} disabled={busy}>
+                Sarvam AI <small>most accurate</small>
+              </button>
+              <button role="radio" aria-checked={engine === "free"} aria-selected={engine === "free"} onClick={() => setEngine("free")} disabled={busy}>
+                On-device <small>free, offline</small>
+              </button>
+            </div>
+          </div>
+        )}
+        {mode !== "live" && engine === "sarvam" && !SARVAM_PROXY_URL && (
+          <label className="field">
+            <span>
+              Your Sarvam API key (saved only in this browser).{" "}
+              <a href="https://dashboard.sarvam.ai" target="_blank" rel="noreferrer">
+                Get a free key
+              </a>
+            </span>
+            <input
+              type="password"
+              autoComplete="off"
+              placeholder="Paste key here"
+              value={sarvamKey}
+              onChange={(e) => setSarvamKey(e.target.value)}
+              disabled={busy}
+            />
+          </label>
+        )}
+        {mode !== "live" && engine === "sarvam" && !sarvamSupports(lang.id) && (
+          <p className="notice">Sarvam AI does not support this language, so the free on-device engine is used.</p>
+        )}
+        {mode !== "live" && engine === "sarvam" && sarvamSupports(lang.id) && !sarvamReady && (
+          <p className="notice">Add your Sarvam key above, or switch to On-device. Until then the free engine is used.</p>
+        )}
+        {mode !== "live" && !useSarvam && lang.api === null && (
           <p className="notice">This language works only with Live mic. Upload and record are not available for it yet.</p>
         )}
-        {mode !== "live" && !status.ai && (
+        {mode !== "live" && !status.ai && !useSarvam && (
           <label className="field">
             <span>Speech model (runs free on your device, downloads once)</span>
             <select value={localModel} onChange={(e) => setLocalModel(e.target.value)} disabled={busy}>

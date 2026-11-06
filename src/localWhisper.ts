@@ -12,7 +12,7 @@ export type LocalProgress =
   | { stage: "transcribing" };
 
 /** Decode any browser-playable audio (mp3, m4a, wav, ogg, webm...) to 16 kHz mono samples. */
-async function decodeTo16kMono(blob: Blob): Promise<Float32Array> {
+export async function decodeTo16kMono(blob: Blob): Promise<Float32Array> {
   const data = await blob.arrayBuffer();
   const ctx = new AudioContext();
   let decoded: AudioBuffer;
