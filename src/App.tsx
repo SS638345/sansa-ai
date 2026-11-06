@@ -4,6 +4,7 @@ import { liveDictationSupported, useLiveDictation } from "./hooks/useLiveDictati
 import { useVoiceRecorder } from "./hooks/useVoiceRecorder";
 import { LOCAL_MODELS, transcribeLocally, type LocalProgress } from "./localWhisper";
 import { SARVAM_PROXY_URL, sarvamSupports, transcribeWithSarvam } from "./sarvam";
+import { SANSA_ENGINE_URL, sansaSupports, transcribeWithSansa } from "./sansaEngine";
 
 // id: browser live-mic language tag. api: Whisper code for upload/record, or null when
 // Whisper has no model for that language (e.g. Odia), so only live mic can be offered.
@@ -59,7 +60,11 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<LocalProgress | null>(null);
   const [localModel, setLocalModel] = useState(() => load("vtt.model", LOCAL_MODELS[0].id));
-  const [engine, setEngine] = useState<"sarvam" | "free">(() => (load("vtt.engine", "sarvam") === "free" ? "free" : "sarvam"));
+  const [engine, setEngine] = useState<"sansa" | "sarvam" | "free">(() => {
+    const e = load("vtt.engine", "sansa");
+    return e === "free" || e === "sarvam" ? e : "sansa";
+  });
+  const [engineUrl, setEngineUrl] = useState(() => load("vtt.engineUrl", ""));
   const [sarvamKey, setSarvamKey] = useState(() => load("vtt.sarvamKey", ""));
   const [pieces, setPieces] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +79,7 @@ export default function App() {
   useEffect(() => save("vtt.model", localModel), [localModel]);
   useEffect(() => save("vtt.engine", engine), [engine]);
   useEffect(() => save("vtt.sarvamKey", sarvamKey.trim()), [sarvamKey]);
+  useEffect(() => save("vtt.engineUrl", engineUrl.trim()), [engineUrl]);
 
   const append = (chunk: string) => {
     if (!chunk) return;
@@ -85,10 +91,15 @@ export default function App() {
 
   const sarvamReady = Boolean(SARVAM_PROXY_URL || sarvamKey.trim());
   const useSarvam = engine === "sarvam" && sarvamSupports(lang.id) && sarvamReady;
+  const sansaUrl = SANSA_ENGINE_URL ?? (engineUrl.trim() || null);
+  const useSansa = engine === "sansa" && sansaSupports(lang.id) && Boolean(sansaUrl);
+  const remoteReady = engine === "sansa" ? Boolean(sansaUrl) : sarvamReady;
+  const remoteSupports = engine === "sansa" ? sansaSupports(lang.id) : sarvamSupports(lang.id);
+  const remoteName = engine === "sansa" ? "SANSA engine" : "Sarvam AI";
 
   const runTranscribe = async (audio: Blob) => {
     if (audio.size === 0) return;
-    if (!useSarvam && lang.api === null) {
+    if (!useSarvam && !useSansa && lang.api === null) {
       setError(`${lang.label.split(" - ")[0]} is not supported for upload/record yet. Use Live mic.`);
       return;
     }
@@ -97,7 +108,9 @@ export default function App() {
     try {
       // Sarvam AI (most accurate for Indian languages) when chosen and supported;
       // else server OpenAI when configured; else free on-device Whisper.
-      const out = useSarvam
+      const out = useSansa
+        ? await transcribeWithSansa(audio, lang.id, sansaUrl!, (done, total) => setPieces({ done, total }))
+        : useSarvam
         ? await transcribeWithSarvam(audio, lang.id, sarvamKey.trim() || null, (done, total) => setPieces({ done, total }))
         : status.ai
           ? await transcribe(audio, lang.api ?? "")
@@ -165,8 +178,8 @@ export default function App() {
   const shownError = error ?? live.error;
   const busyText = pieces
     ? pieces.total > 1
-      ? `Sarvam AI: converting part ${Math.min(pieces.done + 1, pieces.total)} of ${pieces.total}…`
-      : "Sarvam AI: converting…"
+      ? `${useSansa ? "SANSA engine" : "Sarvam AI"}: converting part ${Math.min(pieces.done + 1, pieces.total)} of ${pieces.total}…`
+      : `${useSansa ? "SANSA engine" : "Sarvam AI"}: converting…`
     : progress?.stage === "decoding"
       ? "Reading audio…"
       : progress?.stage === "loading"
@@ -271,9 +284,12 @@ export default function App() {
         {mode !== "live" && (
           <div className="field">
             <span>Speech engine</span>
-            <div className="tabs two" role="radiogroup">
+            <div className="tabs" role="radiogroup">
+              <button role="radio" aria-checked={engine === "sansa"} aria-selected={engine === "sansa"} onClick={() => setEngine("sansa")} disabled={busy}>
+                SANSA engine <small>free, accurate</small>
+              </button>
               <button role="radio" aria-checked={engine === "sarvam"} aria-selected={engine === "sarvam"} onClick={() => setEngine("sarvam")} disabled={busy}>
-                Sarvam AI <small>most accurate</small>
+                Sarvam AI <small>needs key</small>
               </button>
               <button role="radio" aria-checked={engine === "free"} aria-selected={engine === "free"} onClick={() => setEngine("free")} disabled={busy}>
                 On-device <small>free, offline</small>
@@ -299,16 +315,31 @@ export default function App() {
             />
           </label>
         )}
-        {mode !== "live" && engine === "sarvam" && !sarvamSupports(lang.id) && (
-          <p className="notice">Sarvam AI does not support this language, so the free on-device engine is used.</p>
+        {mode !== "live" && engine === "sansa" && !SANSA_ENGINE_URL && (
+          <label className="field">
+            <span>SANSA engine address (your Hugging Face Space URL)</span>
+            <input
+              type="url"
+              autoComplete="off"
+              placeholder="https://your-name-sansa-engine.hf.space"
+              value={engineUrl}
+              onChange={(e) => setEngineUrl(e.target.value)}
+              disabled={busy}
+            />
+          </label>
         )}
-        {mode !== "live" && engine === "sarvam" && sarvamSupports(lang.id) && !sarvamReady && (
-          <p className="notice">Add your Sarvam key above, or switch to On-device. Until then the free engine is used.</p>
+        {mode !== "live" && engine !== "free" && !remoteSupports && (
+          <p className="notice">{remoteName} does not support this language, so the free on-device engine is used.</p>
         )}
-        {mode !== "live" && !useSarvam && lang.api === null && (
+        {mode !== "live" && engine !== "free" && remoteSupports && !remoteReady && (
+          <p className="notice">
+            {engine === "sansa" ? "Add the SANSA engine address above" : "Add your Sarvam key above"}, or switch to On-device. Until then the free engine is used.
+          </p>
+        )}
+        {mode !== "live" && !useSarvam && !useSansa && lang.api === null && (
           <p className="notice">This language works only with Live mic. Upload and record are not available for it yet.</p>
         )}
-        {mode !== "live" && !status.ai && !useSarvam && (
+        {mode !== "live" && !status.ai && !useSarvam && !useSansa && (
           <label className="field">
             <span>Speech model (runs free on your device, downloads once)</span>
             <select value={localModel} onChange={(e) => setLocalModel(e.target.value)} disabled={busy}>
