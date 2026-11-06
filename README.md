@@ -47,3 +47,8 @@ src/hooks/             useLiveDictation (browser speech), useVoiceRecorder (Medi
 ```
 
 The audio helpers and recorder hook are adapted from the earlier SANSA AI project.
+
+## Launch
+
+- **GitHub Pages (free):** `.github/workflows/pages.yml` builds and publishes the app on every push to `main`. Live mic works there; the AI tabs stay off because Pages has no server. In repo Settings → Pages, set Source to "GitHub Actions" if the first run asks for it.
+- **With AI modes:** run `npm run build && npm start` on any Node host (Render, Railway, a VPS) and set `OPENAI_API_KEY`.
