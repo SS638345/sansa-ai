@@ -13,7 +13,7 @@ Simple voice to text converter. Pesunga, text aagidum. Tamil + English.
 
 ## Own free engine: SANSA engine
 
-`engine/` is a self-hosted speech server running AI4Bharat's open IndicConformer (600M, MIT), covering all 22 scheduled Indian languages. Host it free on a Hugging Face Space (Docker, CPU basic); see `engine/README.md`. Then paste the Space URL in the app (Speech engine → SANSA engine) or set the repo variable `VITE_SANSA_ENGINE_URL`. Free Spaces are slower than paid APIs (roughly real-time on CPU) and sleep after ~48 h idle.
+`engine/` is a self-hosted speech server. Tamil uses vasista22/whisper-tamil-medium (public, no login); all 22 scheduled Indian languages use AI4Bharat's open IndicConformer once an `HF_TOKEN` is set (the model is gated). Other languages fall back to on-device until then. Host it free on a Hugging Face Space (Docker, CPU basic); see `engine/README.md`. Then paste the Space URL in the app (Speech engine → SANSA engine) or set the repo variable `VITE_SANSA_ENGINE_URL`. Free Spaces are slower than paid APIs (roughly real-time on CPU) and sleep after ~48 h idle.
 
 ## Accurate mode: Sarvam AI
 
