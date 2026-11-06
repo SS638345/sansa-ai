@@ -11,6 +11,10 @@ Simple voice to text converter. Pesunga, text aagidum. Tamil + English.
 - Installable: on Android Chrome use "Add to Home screen" to get an app icon.
 - Edit the text, copy it, or download it as `.txt`. The text is kept in your browser if you reload.
 
+## Own free engine: SANSA engine
+
+`engine/` is a self-hosted speech server running AI4Bharat's open IndicConformer (600M, MIT), covering all 22 scheduled Indian languages. Host it free on a Hugging Face Space (Docker, CPU basic); see `engine/README.md`. Then paste the Space URL in the app (Speech engine → SANSA engine) or set the repo variable `VITE_SANSA_ENGINE_URL`. Free Spaces are slower than paid APIs (roughly real-time on CPU) and sleep after ~48 h idle.
+
 ## Accurate mode: Sarvam AI
 
 Upload and Record can use [Sarvam AI](https://www.sarvam.ai) (`saarika:v2.5`), which is trained on Indian languages and is far more accurate than the free on-device model for Tamil, Hindi, Telugu, Kannada, Malayalam, Bengali, Marathi, Gujarati, Punjabi, Odia and Indian English. Long files are split into ≤25 s pieces at quiet points (Sarvam's per-request limit is 30 s).

@@ -27,6 +27,7 @@ jobs:
       - run: npm run build
         env:
           VITE_SARVAM_PROXY_URL: ${{ vars.VITE_SARVAM_PROXY_URL }}
+          VITE_SANSA_ENGINE_URL: ${{ vars.VITE_SANSA_ENGINE_URL }}
       - uses: actions/configure-pages@v5
         with:
           enablement: true
