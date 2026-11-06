@@ -91,11 +91,14 @@ jobs:
           files = sorted(glob.glob("/tmp/audio/*.mp3") + glob.glob("/tmp/audio/*.flac"))
           for m in models:
               try:
-                  asr = pipeline("automatic-speech-recognition", model=m, chunk_length_s=30)
+                  from transformers import AutoProcessor, GenerationConfig, WhisperForConditionalGeneration
+                  model = WhisperForConditionalGeneration.from_pretrained(m)
                   if "vasista22" in m:
                       # Its saved generation config predates language/task support; borrow the base model's.
-                      from transformers import GenerationConfig
-                      asr.model.generation_config = GenerationConfig.from_pretrained("openai/whisper-medium")
+                      model.generation_config = GenerationConfig.from_pretrained("openai/whisper-medium")
+                  proc = AutoProcessor.from_pretrained(m)
+                  asr = pipeline("automatic-speech-recognition", model=model, tokenizer=proc.tokenizer,
+                                 feature_extractor=proc.feature_extractor, chunk_length_s=30)
               except Exception as e:
                   print(f"!!! could not load {m}: {e}")
                   continue
