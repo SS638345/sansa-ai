@@ -1,8 +1,9 @@
 import type { WorkerMessage, WorkerRequest } from "./whisper.worker";
 
 export const LOCAL_MODELS = [
-  { id: "onnx-community/whisper-base", label: "Fast (about 80 MB download)" },
-  { id: "onnx-community/whisper-small", label: "More accurate (about 250 MB download)" },
+  { id: "onnx-community/whisper-small", label: "Balanced (about 400 MB download)" },
+  { id: "onnx-community/whisper-large-v3-turbo", label: "Best (about 1 GB, needs a good PC with Chrome)" },
+  { id: "onnx-community/whisper-base", label: "Fast but less accurate (about 150 MB)" },
 ] as const;
 
 export type LocalProgress =

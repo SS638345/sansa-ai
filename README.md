@@ -5,7 +5,7 @@ Simple voice to text converter. Pesunga, text aagidum. Tamil + English.
 ## Features
 
 - **Live mic (free):** words appear while you speak. Uses the browser's built-in speech engine (Chrome, Edge, Android Chrome, Safari). No API key, no cost.
-- **Record & convert / Upload audio (free):** mp3, m4a, wav, ogg, webm, WhatsApp voice notes (up to 25 MB). Runs OpenAI Whisper on your own device with transformers.js, so it works on the static site with no key. The model downloads once (Fast ≈80 MB, More accurate ≈250 MB) and is cached.
+- **Record & convert / Upload audio (free):** mp3, m4a, wav, ogg, webm, WhatsApp voice notes (up to 25 MB). Runs OpenAI Whisper on your own device with transformers.js, so it works on the static site with no key. The model downloads once (Balanced ≈400 MB, Best ≈1 GB via whisper-large-v3-turbo, Fast ≈150 MB) and is cached.
 - **Optional server AI:** if the Node server has `OPENAI_API_KEY`, those two tabs use OpenAI `gpt-4o-mini-transcribe` instead (paid, usually more accurate, ffmpeg converts odd formats).
 - Languages: Tamil, English, Hindi, Telugu, Kannada, Malayalam, Bengali, Marathi, Gujarati, Punjabi, Urdu, Assamese, Nepali, Sanskrit, Sindhi, plus "Mixed / auto detect" for upload/record. Odia works with Live mic only (Whisper has no Odia model). Live mic language support depends on the browser; Chrome covers the major Indian languages.
 - Installable: on Android Chrome use "Add to Home screen" to get an app icon.
