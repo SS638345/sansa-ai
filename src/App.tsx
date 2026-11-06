@@ -4,13 +4,31 @@ import { liveDictationSupported, useLiveDictation } from "./hooks/useLiveDictati
 import { useVoiceRecorder } from "./hooks/useVoiceRecorder";
 import { LOCAL_MODELS, transcribeLocally, type LocalProgress } from "./localWhisper";
 
-const LANGUAGES = [
+// id: browser live-mic language tag. api: Whisper code for upload/record, or null when
+// Whisper has no model for that language (e.g. Odia), so only live mic can be offered.
+type Language = { id: string; api: string | null; label: string };
+
+const LANGUAGES: readonly Language[] = [
   { id: "ta-IN", api: "ta", label: "தமிழ் (Tamil)" },
   { id: "en-IN", api: "en", label: "English (India)" },
+  { id: "hi-IN", api: "hi", label: "हिन्दी (Hindi)" },
+  { id: "te-IN", api: "te", label: "తెలుగు (Telugu)" },
+  { id: "kn-IN", api: "kn", label: "ಕನ್ನಡ (Kannada)" },
+  { id: "ml-IN", api: "ml", label: "മലയാളം (Malayalam)" },
+  { id: "bn-IN", api: "bn", label: "বাংলা (Bengali)" },
+  { id: "mr-IN", api: "mr", label: "मराठी (Marathi)" },
+  { id: "gu-IN", api: "gu", label: "ગુજરાતી (Gujarati)" },
+  { id: "pa-IN", api: "pa", label: "ਪੰਜਾਬੀ (Punjabi)" },
+  { id: "ur-IN", api: "ur", label: "اردو (Urdu)" },
+  { id: "or-IN", api: null, label: "ଓଡ଼ିଆ (Odia) - live mic only" },
+  { id: "as-IN", api: "as", label: "অসমীয়া (Assamese)" },
+  { id: "ne-NP", api: "ne", label: "नेपाली (Nepali)" },
+  { id: "sa-IN", api: "sa", label: "संस्कृतम् (Sanskrit)" },
+  { id: "sd-IN", api: "sd", label: "سنڌي (Sindhi)" },
   { id: "en-US", api: "en", label: "English (US)" },
-  // Auto-detect lets Whisper handle Tamil + English mixed audio; live mic falls back to Tamil.
-  { id: "auto", api: "", label: "Tamil + English mixed (auto, upload/record)" },
-] as const;
+  // Auto-detect lets Whisper handle mixed speech (e.g. Tamil + English); live mic falls back to Tamil.
+  { id: "auto", api: "", label: "Mixed / auto detect (upload/record)" },
+];
 
 type Mode = "live" | "record" | "upload";
 
@@ -61,13 +79,17 @@ export default function App() {
 
   const runTranscribe = async (audio: Blob) => {
     if (audio.size === 0) return;
+    if (lang.api === null) {
+      setError(`${lang.label.split(" - ")[0]} is not supported for upload/record yet. Use Live mic.`);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
       // Server AI when an OpenAI key is configured; otherwise free on-device Whisper.
       const out = status.ai
-        ? await transcribe(audio, lang.api)
-        : await transcribeLocally(audio, lang.api, localModel, setProgress);
+        ? await transcribe(audio, lang.api ?? "")
+        : await transcribeLocally(audio, lang.api ?? "", localModel, setProgress);
       if (!out) setError("No speech found in this audio.");
       append(out);
     } catch (e) {
@@ -151,7 +173,7 @@ export default function App() {
         <h1>
           Pesunga. <span className="grad">Text aagidum.</span>
         </h1>
-        <p className="sub">Tamil and English voice to text, right in your browser. No sign up, no install.</p>
+        <p className="sub">Voice to text in Tamil, Hindi, Telugu and 15+ Indian languages, right in your browser. No sign up, no install.</p>
       </header>
 
       <main className="app">
@@ -230,6 +252,9 @@ export default function App() {
           </div>
         )}
 
+        {mode !== "live" && lang.api === null && (
+          <p className="notice">This language works only with Live mic. Upload and record are not available for it yet.</p>
+        )}
         {mode !== "live" && !status.ai && (
           <label className="field">
             <span>Speech model (runs free on your device, downloads once)</span>
@@ -257,6 +282,7 @@ export default function App() {
           <span className="count">{text.trim() ? text.trim().split(/\s+/).length : 0} words</span>
         </div>
         <textarea
+          dir="auto"
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Your text will appear here. You can edit it too."
@@ -283,8 +309,8 @@ export default function App() {
           <p>Words appear while you speak. Free in Chrome and Android.</p>
         </div>
         <div>
-          <h3>Tamil + English</h3>
-          <p>Switch language anytime. Edit the text before you copy it.</p>
+          <h3>Indian languages</h3>
+          <p>Tamil, Hindi, Telugu, Kannada, Malayalam, Bengali, Marathi, Gujarati, Punjabi, Urdu and more.</p>
         </div>
         <div>
           <h3>Private</h3>
