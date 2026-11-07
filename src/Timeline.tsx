@@ -1,13 +1,25 @@
-import { useEffect, useRef, useState } from "react";
-import { clock, type Segment } from "./transcript";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { clock, toVtt, type Segment } from "./transcript";
+
+export type MediaKind = "audio" | "video";
 
 /**
  * The last converted audio with its text line by line. The line being played lights up;
  * tap any line to jump the audio there. Audio is not stored, so after a reload only the
  * times stay (subtitles still download).
  */
-export function Timeline({ segments, audioUrl }: { segments: Segment[]; audioUrl: string | null }) {
-  const audioRef = useRef<HTMLAudioElement>(null);
+export function Timeline({ segments, mediaUrl, kind }: { segments: Segment[]; mediaUrl: string | null; kind: MediaKind }) {
+  const audioUrl = mediaUrl;
+  const audioRef = useRef<HTMLMediaElement | null>(null);
+  // Video plays with the subtitles drawn on it, from the same timed lines.
+  const vtt = useMemo(() => (kind === "video" ? toVtt(segments) : null), [kind, segments]);
+  const [vttUrl, setVttUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!vtt) return setVttUrl(null);
+    const url = URL.createObjectURL(new Blob([vtt], { type: "text/vtt" }));
+    setVttUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [vtt]);
   const listRef = useRef<HTMLOListElement>(null);
   const [now, setNow] = useState(-1);
 
@@ -38,10 +50,31 @@ export function Timeline({ segments, audioUrl }: { segments: Segment[]; audioUrl
         <h3>Timeline</h3>
         <span className="count">{segments.length} lines · tap a line to play from there</span>
       </div>
-      {audioUrl ? (
-        <audio ref={audioRef} src={audioUrl} controls preload="metadata" onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} />
+      {audioUrl && kind === "video" ? (
+        <video
+          ref={(el) => {
+            audioRef.current = el;
+          }}
+          src={audioUrl}
+          controls
+          playsInline
+          preload="metadata"
+          onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)}
+        >
+          {vttUrl && <track kind="subtitles" src={vttUrl} srcLang="und" label="SANSA subtitles" default />}
+        </video>
+      ) : audioUrl ? (
+        <audio
+          ref={(el) => {
+            audioRef.current = el;
+          }}
+          src={audioUrl}
+          controls
+          preload="metadata"
+          onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)}
+        />
       ) : (
-        <p className="hint left">Audio is not kept after a reload. Times and subtitles are still here.</p>
+        <p className="hint left">Audio is not loaded. Open this from My library to play it again; subtitles still download.</p>
       )}
       <ol ref={listRef} className="lines">
         {segments.map((s, i) => (

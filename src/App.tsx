@@ -6,7 +6,11 @@ import { LOCAL_MODELS, TAMIL_MODEL, transcribeLocally, type LocalProgress } from
 import { SARVAM_PROXY_URL, sarvamSupports, transcribeWithSarvam, type OutputStyle } from "./sarvam";
 import { SANSA_ENGINE_URL, SansaLanguageUnavailable, sansaSupports, transcribeWithSansa } from "./sansaEngine";
 import { keyTerms, parseMyWords, polish, toSrt, toTimedText, toVtt, type Segment, type Transcript } from "./transcript";
-import { Timeline } from "./Timeline";
+import { Timeline, type MediaKind } from "./Timeline";
+import { denoiseToWav } from "./denoise";
+import { deleteItem, listItems, renameItem, saveItem, titleFrom, type LibraryItem } from "./library";
+import { readAloudSupported, speak, voiceFor, voicesReady } from "./readAloud";
+import { Library } from "./Library";
 
 const STYLES: { id: OutputStyle; label: string; note: string }[] = [
   { id: "native", label: "As spoken", note: "same language" },
@@ -99,7 +103,15 @@ export default function App() {
       return [];
     }
   });
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [media, setMedia] = useState<{ url: string; kind: MediaKind } | null>(null);
+  const audioUrl = media?.url ?? null;
+  const [denoise, setDenoise] = useState(() => load("vtt.denoise", "0") === "1");
+  const [cleaning, setCleaning] = useState<number | null>(null);
+  const [library, setLibrary] = useState<LibraryItem[]>([]);
+  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [stopSpeaking, setStopSpeaking] = useState<(() => void) | null>(null);
+  const [readRate, setReadRate] = useState(() => Number(load("vtt.readRate", "1")) || 1);
+  const [notice, setNotice] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -116,9 +128,19 @@ export default function App() {
   useEffect(() => save("vtt.clean", clean ? "1" : "0"), [clean]);
   useEffect(() => save("vtt.myWords", myWords), [myWords]);
   useEffect(() => save("vtt.segments", JSON.stringify(segments)), [segments]);
+  useEffect(() => save("vtt.denoise", denoise ? "1" : "0"), [denoise]);
+  useEffect(() => save("vtt.readRate", String(readRate)), [readRate]);
   useEffect(() => () => {
     if (audioUrl) URL.revokeObjectURL(audioUrl);
   }, [audioUrl]);
+  const refreshLibrary = () =>
+    listItems()
+      .then(setLibrary)
+      .catch(() => setLibrary([]));
+  useEffect(() => {
+    void refreshLibrary();
+  }, []);
+  useEffect(() => () => stopSpeaking?.(), [stopSpeaking]);
 
   const rules = parseMyWords(myWords);
   const finish = (t: Transcript) => polish(t, { clean, rules });
@@ -149,7 +171,7 @@ export default function App() {
   const styleNeedsSarvam = (style === "roman" || style === "codemix") && !useSarvam;
   const translateLocally = style === "english" && !useSarvam;
 
-  const runTranscribe = async (audio: Blob) => {
+  const runTranscribe = async (audio: Blob, name?: string) => {
     if (audio.size === 0) return;
     if (!useSarvam && !useSansa && lang.api === null) {
       setError(`${lang.label.split(" - ")[0]} is not supported for upload/record yet. Use Live mic.`);
@@ -158,17 +180,21 @@ export default function App() {
     setBusy(true);
     setError(null);
     try {
+      // Optional free noise clean-up first; the original file is still what plays back.
+      const input = denoise
+        ? await denoiseToWav(audio, (f) => setCleaning(f)).finally(() => setCleaning(null))
+        : audio;
       // Sarvam AI (most accurate for Indian languages) when chosen and supported;
       // else server OpenAI when configured; else free on-device Whisper.
       // The Tamil-trained model only writes Tamil, so English translation uses the general model.
       const local = () =>
         translateLocally
-          ? transcribeLocally(audio, lang.api ?? "", generalModel, setProgress, "translate")
-          : transcribeLocally(audio, lang.api ?? "", localModel, setProgress);
+          ? transcribeLocally(input, lang.api ?? "", generalModel, setProgress, "translate")
+          : transcribeLocally(input, lang.api ?? "", localModel, setProgress);
       const raw: Transcript = translateLocally
         ? await local()
         : useSansa
-        ? await transcribeWithSansa(audio, lang.id, sansaUrl!, (done, total) => setPieces({ done, total })).catch((e) => {
+        ? await transcribeWithSansa(input, lang.id, sansaUrl!, (done, total) => setPieces({ done, total })).catch((e) => {
             // Engine has no model for this language yet: fall back to the free on-device engine.
             if (!(e instanceof SansaLanguageUnavailable)) throw e;
             setPieces(null);
@@ -176,7 +202,7 @@ export default function App() {
           })
         : useSarvam
         ? await transcribeWithSarvam(
-            audio,
+            input,
             lang.id,
             sarvamKey.trim() || null,
             (done, total) => setPieces({ done, total }),
@@ -184,7 +210,7 @@ export default function App() {
             keyTerms(rules),
           )
         : status.ai
-          ? { text: await transcribe(audio, lang.api ?? ""), segments: [] }
+          ? { text: await transcribe(input, lang.api ?? ""), segments: [] }
           : await local();
       const out = finish(raw);
       if (!out.text) {
@@ -193,7 +219,23 @@ export default function App() {
       }
       append(out.text);
       setSegments(out.segments);
-      setAudioUrl(out.segments.length ? URL.createObjectURL(audio) : null);
+      const kind: MediaKind = audio.type.startsWith("video/") ? "video" : "audio";
+      setMedia(out.segments.length ? { url: URL.createObjectURL(audio), kind } : null);
+      // Keep a copy in My library (this device only).
+      try {
+        const saved = await saveItem({
+          title: name?.replace(/\.[^.]+$/, "") || titleFrom(out.text, "Recording"),
+          text: out.text,
+          segments: out.segments,
+          lang: lang.id,
+          media: audio,
+          mediaType: kind,
+        });
+        setCurrentId(saved.id);
+        void refreshLibrary();
+      } catch {
+        /* library unavailable (private window): the text is still shown */
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Transcription failed.");
     } finally {
@@ -218,11 +260,15 @@ export default function App() {
 
   const onFile = async (file: File | undefined) => {
     if (!file) return;
-    if (file.size > 25 * 1024 * 1024) {
-      setError("File is too big. Max 25 MB.");
+    const isVideo = file.type.startsWith("video/") || /\.(mp4|mov|mkv|m4v)$/i.test(file.name);
+    const maxMb = isVideo ? 300 : 25;
+    if (file.size > maxMb * 1024 * 1024) {
+      setError(`File is too big. Max ${maxMb} MB for ${isVideo ? "video" : "audio"}.`);
       return;
     }
-    await runTranscribe(file);
+    // Some phones leave the type empty for .mov/.mkv; mark it so the timeline shows a video player.
+    const blob = isVideo && !file.type ? new Blob([file], { type: "video/mp4" }) : file;
+    await runTranscribe(blob, file.name);
     if (fileRef.current) fileRef.current.value = "";
   };
 
@@ -252,8 +298,35 @@ export default function App() {
     setMode(m);
   };
 
+  const readLang = style === "english" && mode !== "live" ? "en-IN" : lang.id === "auto" ? "ta-IN" : lang.id;
+  const toggleRead = async () => {
+    if (stopSpeaking) {
+      stopSpeaking();
+      setStopSpeaking(null);
+      return;
+    }
+    await voicesReady();
+    if (!voiceFor(readLang)) {
+      setNotice(
+        "This device has no voice for this language, so it may sound wrong. On Android: Settings → Text-to-speech → install the language. On Windows: Settings → Time & language → Speech.",
+      );
+    } else setNotice(null);
+    const stop = speak(text, readLang, readRate, () => setStopSpeaking(null));
+    setStopSpeaking(() => stop);
+  };
+
+  const openItem = (item: LibraryItem) => {
+    setText(item.text);
+    setSegments(item.segments);
+    setMedia(item.media && item.segments.length ? { url: URL.createObjectURL(item.media), kind: item.mediaType ?? "audio" } : null);
+    setCurrentId(item.id);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const shownError = error ?? live.error;
-  const busyText = pieces
+  const busyText = cleaning != null
+    ? `Cleaning background noise… ${Math.round(cleaning * 100)}%`
+    : pieces
     ? pieces.total > 1
       ? `${useSansa ? "SANSA engine" : "Sarvam AI"}: converting part ${Math.min(pieces.done + 1, pieces.total)} of ${pieces.total}…`
       : `${useSansa ? "SANSA engine" : "Sarvam AI"}: converting…`
@@ -352,9 +425,12 @@ export default function App() {
                 disabled={busy}
                 onChange={(e) => void onFile(e.target.files?.[0])}
               />
-              {busy ? "Working…" : "Choose audio file"}
+              {busy ? "Working…" : "Choose audio or video"}
             </label>
-            <p className="hint">mp3, m4a, wav, ogg, webm, WhatsApp voice notes. Max 25 MB. First time, the speech model downloads once.</p>
+            <p className="hint">
+              mp3, m4a, wav, ogg, WhatsApp voice notes (max 25 MB), or mp4/webm video for subtitles (max 300 MB). First time, the speech
+              model downloads once.
+            </p>
           </div>
         )}
 
@@ -457,6 +533,14 @@ export default function App() {
         )}
 
         <div className="options">
+          {mode !== "live" && (
+            <label className="check">
+              <input type="checkbox" checked={denoise} onChange={(e) => setDenoise(e.target.checked)} disabled={busy} />
+              <span>
+                Clean background noise <small>fan, traffic, crowd. Free, on this device</small>
+              </span>
+            </label>
+          )}
           <label className="check">
             <input type="checkbox" checked={clean} onChange={(e) => setClean(e.target.checked)} />
             <span>
@@ -504,7 +588,8 @@ export default function App() {
           rows={12}
         />
         {live.interim && <p className="interim">{live.interim}</p>}
-        {segments.length > 0 && <Timeline segments={segments} audioUrl={audioUrl} />}
+        {segments.length > 0 && <Timeline segments={segments} mediaUrl={audioUrl} kind={media?.kind ?? "audio"} />}
+        {notice && <p className="notice">{notice}</p>}
         <div className="row">
           <button onClick={copy} disabled={!text}>
             {copied ? "Copied ✓" : "Copy"}
@@ -512,6 +597,18 @@ export default function App() {
           <button onClick={() => download(text, "txt")} disabled={!text}>
             Download .txt
           </button>
+          {readAloudSupported && (
+            <span className="read">
+              <button onClick={() => void toggleRead()} disabled={!text && !stopSpeaking} aria-pressed={Boolean(stopSpeaking)}>
+                {stopSpeaking ? "■ Stop reading" : "🔊 Read aloud"}
+              </button>
+              <select value={readRate} onChange={(e) => setReadRate(Number(e.target.value))} aria-label="Reading speed">
+                <option value={0.8}>Slow</option>
+                <option value={1}>Normal</option>
+                <option value={1.25}>Fast</option>
+              </select>
+            </span>
+          )}
           {segments.length > 0 && (
             <>
               <button onClick={() => download(toSrt(segments), "srt")} title="Subtitles for YouTube, Instagram, video editors">
@@ -530,7 +627,8 @@ export default function App() {
             onClick={() => {
               setText("");
               setSegments([]);
-              setAudioUrl(null);
+              setMedia(null);
+              setCurrentId(null);
             }}
             disabled={!text && !segments.length}
           >
@@ -538,6 +636,14 @@ export default function App() {
           </button>
         </div>
       </section>
+
+      <Library
+        items={library}
+        currentId={currentId}
+        onOpen={openItem}
+        onRename={(item, title) => void renameItem(item, title).then(refreshLibrary)}
+        onDelete={(item) => void deleteItem(item.id).then(refreshLibrary)}
+      />
       </main>
 
       <section className="features" aria-label="Features">
