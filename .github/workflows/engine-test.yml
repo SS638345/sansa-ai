@@ -75,7 +75,21 @@ jobs:
           text = "இன்று காலை நான் சந்தைக்கு சென்று காய்கறிகள் வாங்கினேன். மழை பெய்ததால் கொஞ்சம் தாமதமாக வீட்டுக்கு வந்தேன்."
           open("/tmp/audio/known.txt", "w").write(text)
           gTTS(text, lang="ta").save("/tmp/audio/known.mp3")
+          import os
+          os.makedirs("/tmp/langs", exist_ok=True)
+          other = {
+              "te": "ఈ రోజు ఉదయం నేను మార్కెట్‌కు వెళ్లి కూరగాయలు కొన్నాను.",
+              "kn": "ಇಂದು ಬೆಳಿಗ್ಗೆ ನಾನು ಮಾರುಕಟ್ಟೆಗೆ ಹೋಗಿ ತರಕಾರಿಗಳನ್ನು ಖರೀದಿಸಿದೆ.",
+              "hi": "आज सुबह मैं बाजार गया और सब्जियां खरीदीं।",
+              "gu": "આજે સવારે હું બજારમાં ગયો અને શાકભાજી ખરીદી.",
+              "ml": "ഇന്ന് രാവിലെ ഞാൻ ചന്തയിൽ പോയി പച്ചക്കറികൾ വാങ്ങി.",
+              "bn": "আজ সকালে আমি বাজারে গিয়ে সবজি কিনেছি।",
+          }
+          for code, t in other.items():
+              open(f"/tmp/langs/{code}.txt", "w").write(t)
+              gTTS(t, lang=code).save(f"/tmp/langs/{code}.mp3")
           PY
+          ffmpeg -v quiet -f lavfi -i anullsrc=r=16000:cl=mono -t 8 /tmp/langs/silence.wav
           KEY=$(jq -r '.inputs.audio_key // ""' "$GITHUB_EVENT_PATH")
           if [ -n "$KEY" ] && [ -f engine/testdata/private.enc ]; then
             openssl enc -d -aes-256-cbc -pbkdf2 -in engine/testdata/private.enc -out /tmp/audio/private.flac -pass "pass:$KEY"
@@ -109,6 +123,16 @@ jobs:
             python3 engine/test_client.py "$f" "$LANG_CODE" || { docker logs eng 2>&1 | tail -40; exit 1; }
           done
           echo "Expected (known.mp3): $(cat /tmp/audio/known.txt)"
+          echo "=== silence (expect empty) ==="
+          python3 engine/test_client.py /tmp/langs/silence.wav ta
+          echo "=== unsupported without token (expect 400) ==="
+          python3 engine/test_client.py /tmp/langs/hi.mp3 mr && exit 1 || true
+          for code in te kn hi gu ml bn; do
+            echo "=== $code ==="
+            python3 engine/test_client.py /tmp/langs/$code.mp3 $code || { docker logs eng 2>&1 | tail -40; exit 1; }
+            echo "Expected: $(cat /tmp/langs/$code.txt)"
+          done
+          curl -s localhost:7860/
       - name: Compare with Whisper models
         if: always()
         env:
