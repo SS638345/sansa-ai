@@ -23,6 +23,10 @@ on:
         description: Only delete that draft release
         type: boolean
         default: false
+      notebook_smoke:
+        description: Only run the Colab training notebook on CPU with a tiny model
+        type: boolean
+        default: false
       long_only:
         description: Stop after the long-clip test
         type: boolean
@@ -32,6 +36,19 @@ permissions:
   contents: read
 
 jobs:
+  notebook-smoke:
+    if: ${{ inputs.notebook_smoke }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          pip install -q --index-url https://download.pytorch.org/whl/cpu torch==2.5.1
+          pip install -q "transformers==4.46.3" "datasets==3.1.0" "accelerate==1.1.1" "evaluate==0.4.3" jiwer==3.0.5 soundfile librosa gTTS
+          cd /tmp && SANSA_BASE=openai/whisper-tiny SANSA_GEN=openai/whisper-tiny SANSA_STEPS=3 python $GITHUB_WORKSPACE/webmodel/notebook-smoke.py $GITHUB_WORKSPACE/webmodel/SANSA_train_Tamil.ipynb
+
   delete-offline-copy:
     if: ${{ inputs.delete_offline_copy }}
     runs-on: ubuntu-latest
@@ -165,7 +182,7 @@ jobs:
           exit $fail
 
   build:
-    if: ${{ !inputs.browser_test_only && !inputs.model_artifact && !inputs.delete_offline_copy }}
+    if: ${{ !inputs.browser_test_only && !inputs.model_artifact && !inputs.delete_offline_copy && !inputs.notebook_smoke }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
