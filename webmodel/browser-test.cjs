@@ -10,6 +10,13 @@ const { chromium } = require("playwright");
   page.on("console", (m) => m.type() === "error" && console.log("console:", m.text()));
   page.on("response", (r) => r.status() >= 300 && console.log("http", r.status(), r.request().method(), r.url()));
   page.on("requestfailed", (r) => console.log("failed", r.method(), r.url(), r.failure()?.errorText));
+  // Hugging Face answers 405 to headless Chromium from CI runners (even for onnx-community
+  // models), while plain requests from the same machine work. Fetch model files outside the
+  // page and hand them back, so the app code itself still runs unchanged.
+  await page.route(/https:\/\/([a-z0-9-]+\.)*(huggingface\.co|hf\.co)\//, async (route) => {
+    const res = await route.fetch({ maxRedirects: 10, timeout: 15 * 60 * 1000 });
+    await route.fulfill({ response: res, headers: { ...res.headers(), "access-control-allow-origin": "*" } });
+  });
   await page.goto("http://localhost:4173/");
   await page.getByRole("tab", { name: /Upload audio/ }).click();
   const select = page.locator('label.field:has-text("Speech model") select');
