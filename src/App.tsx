@@ -143,7 +143,7 @@ export default function App() {
   useEffect(() => () => stopSpeaking?.(), [stopSpeaking]);
 
   const rules = parseMyWords(myWords);
-  const finish = (t: Transcript) => polish(t, { clean, rules });
+  const finish = (t: Transcript) => polish(t, { clean, rules, codemix: localCodemix });
 
   const append = (chunk: string) => {
     if (!chunk) return;
@@ -167,8 +167,10 @@ export default function App() {
   const remoteSupports = engine === "sansa" ? sansaSupports(lang.id) : sarvamSupports(lang.id);
   const remoteName = engine === "sansa" ? "SANSA engine" : "Sarvam AI";
   // Output styles: Sarvam does all four. Without Sarvam, English uses on-device Whisper's
-  // free translate; Tanglish and Mixed are not available yet, so text stays as spoken.
-  const styleNeedsSarvam = (style === "roman" || style === "codemix") && !useSarvam;
+  // free translate, Mixed puts English words back in English on this device (src/codemix.ts),
+  // and Tanglish is not available yet, so text stays as spoken.
+  const localCodemix = style === "codemix" && !useSarvam;
+  const styleNeedsSarvam = style === "roman" && !useSarvam;
   const translateLocally = style === "english" && !useSarvam;
 
   const runTranscribe = async (audio: Blob, name?: string) => {
@@ -525,7 +527,7 @@ export default function App() {
         )}
         {mode !== "live" && styleNeedsSarvam && (
           <p className="notice">
-            {style === "roman" ? "Tanglish" : "Mixed"} output needs the Sarvam AI engine for now (free option is coming with the SANSA engine). Until then the text is written as spoken.
+            Tanglish output needs the Sarvam AI engine for now. Until then the text is written as spoken. Try Mixed: it writes English words in English, free on this device.
           </p>
         )}
         {mode !== "live" && translateLocally && engine !== "free" && (

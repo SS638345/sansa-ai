@@ -42,6 +42,7 @@ const { chromium } = require("playwright");
   await page.getByRole("tab", { name: /Upload audio/ }).click();
   const select = page.locator('label.field:has-text("Speech model") select');
   if (pick) await select.selectOption(pick);
+  if (process.env.DENOISE) await page.getByLabel(/Clean background noise/).check();
   const model = await select.inputValue();
   console.log("model:", model);
   const t0 = Date.now();

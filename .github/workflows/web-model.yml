@@ -15,6 +15,14 @@ on:
         description: Skip the export; only run the app in Chromium with the uploaded model
         type: boolean
         default: false
+      model_artifact:
+        description: Only put a copy of the model files on a draft (not public) release for offline tests
+        type: boolean
+        default: false
+      delete_offline_copy:
+        description: Only delete that draft release
+        type: boolean
+        default: false
       long_only:
         description: Stop after the long-clip test
         type: boolean
@@ -24,6 +32,35 @@ permissions:
   contents: read
 
 jobs:
+  delete-offline-copy:
+    if: ${{ inputs.delete_offline_copy }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete offline-test-model -R ${{ github.repository }} -y --cleanup-tag || true
+
+  artifact:
+    if: ${{ inputs.model_artifact }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - run: |
+          pip install -q huggingface_hub
+          python3 -c "from huggingface_hub import snapshot_download as s; s('santhosh63/${{ inputs.name }}', local_dir='/tmp/m', allow_patterns=['*.json','onnx/*.onnx'])"
+          ls -la /tmp/m/onnx
+          du -sh /tmp/m
+      - name: Put the files on a draft release (not public) for offline tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete offline-test-model -R ${{ github.repository }} -y 2>/dev/null || true
+          cd /tmp/m && mv onnx/* . && gh release create offline-test-model -R ${{ github.repository }} --draft \
+            --title "Offline test copy of the Tamil web model (draft, temporary)" --notes "Draft only, for local accuracy tests." --target ${{ github.sha }} *.json *.onnx
+
   browser:
     if: inputs.browser_test_only
     runs-on: ubuntu-latest
@@ -100,6 +137,11 @@ jobs:
           python3 webmodel/make-long-clip.py /tmp/long.mp3
           ffprobe -v error -show_entries format=duration -of csv=p=0 /tmp/long.mp3
           node webmodel/browser-test.cjs /tmp/long.mp3 "$(cat /tmp/long.mp3.txt)"
+          echo "--- same clip, phone quality + background noise ---"
+          ffmpeg -loglevel error -y -i /tmp/long.mp3 -f lavfi -i "anoisesrc=color=pink:amplitude=0.06:seed=7" \
+            -filter_complex "[0:a]highpass=f=300,lowpass=f=3400[s];[s][1:a]amix=inputs=2:duration=first:normalize=0,aresample=8000" -ac 1 /tmp/noisy.wav
+          echo "noise clean-up OFF:"; node webmodel/browser-test.cjs /tmp/noisy.wav "$(cat /tmp/long.mp3.txt)" | grep -E "words matched|error box"
+          echo "noise clean-up ON:"; DENOISE=1 node webmodel/browser-test.cjs /tmp/noisy.wav "$(cat /tmp/long.mp3.txt)" | grep -E "words matched|error box"
           [ -n "$LONG_ONLY" ] && exit 0
           echo "--- other file formats (browser decoder or ffmpeg.wasm fallback) ---"
           sudo apt-get install -y -qq ffmpeg >/dev/null
@@ -123,7 +165,7 @@ jobs:
           exit $fail
 
   build:
-    if: ${{ !inputs.browser_test_only }}
+    if: ${{ !inputs.browser_test_only && !inputs.model_artifact && !inputs.delete_offline_copy }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:

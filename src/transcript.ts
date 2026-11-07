@@ -1,3 +1,5 @@
+import { toCodemix } from "./codemix";
+
 /**
  * Timed transcript pieces, subtitle export (SRT / VTT), Clean mode and "My words".
  * Everything here is plain text processing in the browser: free, no network.
@@ -144,9 +146,11 @@ export function applyMyWords(text: string, rules: WordRule[]): string {
 }
 
 /** Clean mode and My words, applied the same way to the text and to every timed piece. */
-export function polish(t: Transcript, opts: { clean: boolean; rules: WordRule[] }): Transcript {
+export function polish(t: Transcript, opts: { clean: boolean; rules: WordRule[]; codemix?: boolean }): Transcript {
   const fix = (s: string) => {
-    const fixed = opts.rules.length ? applyMyWords(s, opts.rules) : s;
+    // Mixed first, so a My words rule can still override what it picks.
+    const mixed = opts.codemix ? toCodemix(s) : s;
+    const fixed = opts.rules.length ? applyMyWords(mixed, opts.rules) : mixed;
     return opts.clean ? cleanText(fixed) : fixed.trim();
   };
   const segments = t.segments.map((s) => ({ ...s, text: fix(s.text) })).filter((s) => s.text);
