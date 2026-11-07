@@ -26,17 +26,19 @@ jobs:
           python-version: "3.11"
       - name: Free disk space
         run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+      - name: Get transformers.js conversion scripts
+        run: git clone --depth 1 --branch 3.0.2 https://github.com/huggingface/transformers.js /tmp/tjs
       - name: Install
         run: |
-          # One resolve with torch pinned, so optimum can't pull a newer torch (its new exporter needs onnxscript).
-          pip install -q --extra-index-url https://download.pytorch.org/whl/cpu torch==2.5.1+cpu \
-            transformers==4.46.3 "optimum[exporters]==1.23.3" onnx==1.17.0 onnxruntime==1.20.1 \
-            onnxconverter-common==1.14.0 "numpy<2" huggingface_hub gTTS
-          python3 -c "import torch; print('torch', torch.__version__)"
+          cat /tmp/tjs/scripts/requirements.txt
+          pip install -q --extra-index-url https://download.pytorch.org/whl/cpu -r /tmp/tjs/scripts/requirements.txt \
+            huggingface_hub gTTS
+          python3 -c "import torch, transformers; print('torch', torch.__version__, 'transformers', transformers.__version__)"
       - name: Export and upload
+        working-directory: /tmp/tjs
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: python3 webmodel/export.py "${{ inputs.source }}" "${{ inputs.base }}" "${{ inputs.name }}"
+        run: python3 "$GITHUB_WORKSPACE/webmodel/export.py" "${{ inputs.source }}" "${{ inputs.base }}" "${{ inputs.name }}"
       - uses: actions/setup-node@v4
         with:
           node-version: 20
