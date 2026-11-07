@@ -20,7 +20,11 @@ from huggingface_hub import snapshot_download
 local = f"sansa/{base.split('/')[-1]}-{name}"
 snapshot_download(src, local_dir=local, allow_patterns=["*.json", "*.txt", "*.safetensors", "*.bin", "*.model"])
 shutil.copy(hf_hub_download(base, "generation_config.json"), f"{local}/generation_config.json")
-subprocess.run([sys.executable, "-m", "scripts.convert", "--quantize", "--model_id", local,
+help_text = subprocess.run([sys.executable, "-m", "scripts.convert", "--help"], capture_output=True, text=True).stdout
+# onnxslim turns the positions Slice's start into a scalar, which onnxruntime rejects at run time.
+slim = ["--skip_onnxslim"] if "skip_onnxslim" in help_text else []
+print("convert options:", slim, flush=True)
+subprocess.run([sys.executable, "-m", "scripts.convert", "--quantize", "--model_id", local, *slim,
                 "--task", "automatic-speech-recognition-with-past", "--modes", "fp16", "q8", "q4"], check=True)
 out = os.path.join("models", local)
 print("exported:", sorted(os.listdir(f"{out}/onnx")), flush=True)
