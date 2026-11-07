@@ -36,7 +36,7 @@ jobs:
           # >= 4.43, a broken positions Slice in 4.42). 4.38 matches the official web Whisper exports.
           sed -i 's/^transformers\[torch\]==.*/transformers[torch]==4.38.2/' /tmp/tjs/scripts/requirements.txt
           cat /tmp/tjs/scripts/requirements.txt
-          pip install -q --extra-index-url https://download.pytorch.org/whl/cpu torch==2.5.1+cpu \
+          pip install -q --extra-index-url https://download.pytorch.org/whl/cpu torch==2.2.2+cpu \
             -r /tmp/tjs/scripts/requirements.txt huggingface_hub gTTS "numpy<2"
           python3 -c "import torch, transformers; print('torch', torch.__version__, 'transformers', transformers.__version__)"
       - name: Export and upload
