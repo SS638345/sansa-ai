@@ -8,6 +8,10 @@ on:
       language:
         description: Language code (ta, hi, te, ...)
         default: ta
+      bench:
+        description: Run the speed/accuracy benchmark instead of the engine test
+        type: boolean
+        default: false
       audio_key:
         description: Optional key to decrypt engine/testdata/private.enc on this branch
         default: ""
@@ -16,7 +20,38 @@ permissions:
   contents: read
 
 jobs:
+  bench:
+    if: inputs.bench
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
+          pip install -q --index-url https://download.pytorch.org/whl/cpu torch==2.5.1
+          pip install -q transformers==4.46.3 "numpy<2" gTTS faster-whisper==1.1.0 ctranslate2==4.5.0 huggingface_hub
+      - name: Make a 60 s Tamil test clip
+        run: |
+          mkdir -p /tmp/audio
+          python3 - <<'PY'
+          from gtts import gTTS
+          text = ("வணக்கம், நான் உங்கள் ஆர்டர் பற்றி பேச அழைக்கிறேன். நேற்று நீங்கள் ஆர்டர் செய்த பொருட்கள் இன்று மதியம் வந்து சேரும். "
+                  "டெலிவரி நேரத்தில் வீட்டில் யாராவது இருக்க வேண்டும். பணம் ஏற்கனவே செலுத்தப்பட்டுவிட்டது. "
+                  "ஏதாவது பிரச்சனை இருந்தால் எங்கள் வாடிக்கையாளர் சேவை எண்ணுக்கு அழைக்கவும். "
+                  "இந்த மாதம் புதிய தள்ளுபடி திட்டம் ஒன்று அறிமுகப்படுத்தப்பட்டுள்ளது. ஐநூறு ரூபாய்க்கு மேல் வாங்கினால் பத்து சதவீதம் தள்ளுபடி கிடைக்கும். "
+                  "மேலும் விவரங்களுக்கு எங்கள் இணையதளத்தை பார்க்கவும். நன்றி, இனிய நாள் வாழ்த்துக்கள்.")
+          open("/tmp/audio/long.txt", "w").write(text)
+          gTTS(text, lang="ta").save("/tmp/audio/long.mp3")
+          PY
+      - name: Benchmark
+        run: python3 engine/bench.py
+
   test:
+    if: ${{ !inputs.bench }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -40,7 +75,21 @@ jobs:
           text = "இன்று காலை நான் சந்தைக்கு சென்று காய்கறிகள் வாங்கினேன். மழை பெய்ததால் கொஞ்சம் தாமதமாக வீட்டுக்கு வந்தேன்."
           open("/tmp/audio/known.txt", "w").write(text)
           gTTS(text, lang="ta").save("/tmp/audio/known.mp3")
+          import os
+          os.makedirs("/tmp/langs", exist_ok=True)
+          other = {
+              "te": "ఈ రోజు ఉదయం నేను మార్కెట్‌కు వెళ్లి కూరగాయలు కొన్నాను.",
+              "kn": "ಇಂದು ಬೆಳಿಗ್ಗೆ ನಾನು ಮಾರುಕಟ್ಟೆಗೆ ಹೋಗಿ ತರಕಾರಿಗಳನ್ನು ಖರೀದಿಸಿದೆ.",
+              "hi": "आज सुबह मैं बाजार गया और सब्जियां खरीदीं।",
+              "gu": "આજે સવારે હું બજારમાં ગયો અને શાકભાજી ખરીદી.",
+              "ml": "ഇന്ന് രാവിലെ ഞാൻ ചന്തയിൽ പോയി പച്ചക്കറികൾ വാങ്ങി.",
+              "bn": "আজ সকালে আমি বাজারে গিয়ে সবজি কিনেছি।",
+          }
+          for code, t in other.items():
+              open(f"/tmp/langs/{code}.txt", "w").write(t)
+              gTTS(t, lang=code).save(f"/tmp/langs/{code}.mp3")
           PY
+          ffmpeg -v quiet -f lavfi -i anullsrc=r=16000:cl=mono -t 8 /tmp/langs/silence.wav
           KEY=$(jq -r '.inputs.audio_key // ""' "$GITHUB_EVENT_PATH")
           if [ -n "$KEY" ] && [ -f engine/testdata/private.enc ]; then
             openssl enc -d -aes-256-cbc -pbkdf2 -in engine/testdata/private.enc -out /tmp/audio/private.flac -pass "pass:$KEY"
@@ -74,6 +123,16 @@ jobs:
             python3 engine/test_client.py "$f" "$LANG_CODE" || { docker logs eng 2>&1 | tail -40; exit 1; }
           done
           echo "Expected (known.mp3): $(cat /tmp/audio/known.txt)"
+          echo "=== silence (expect empty) ==="
+          python3 engine/test_client.py /tmp/langs/silence.wav ta
+          echo "=== unsupported without token (expect 400) ==="
+          python3 engine/test_client.py /tmp/langs/hi.mp3 mr && exit 1 || true
+          for code in te kn hi gu ml bn; do
+            echo "=== $code ==="
+            python3 engine/test_client.py /tmp/langs/$code.mp3 $code || { docker logs eng 2>&1 | tail -40; exit 1; }
+            echo "Expected: $(cat /tmp/langs/$code.txt)"
+          done
+          curl -s localhost:7860/
       - name: Compare with Whisper models
         if: always()
         env:
@@ -113,3 +172,23 @@ jobs:
       - name: Engine logs
         if: always()
         run: docker logs eng 2>&1 | tail -30 || true
+
+  space-dockerfile:
+    if: ${{ !inputs.bench }}
+    # The one-file Dockerfile people paste into a Hugging Face Space (engine/space/Dockerfile).
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build like a Space
+        run: docker build -t sansa-space engine/space
+      - name: Start as user 1000 (like a Space) and check health
+        run: |
+          docker run -d --name space --user 1000 -p 7860:7860 sansa-space
+          for i in $(seq 1 120); do
+            if curl -sf localhost:7860/ ; then echo; echo "ready after $((i*10)) s"; exit 0; fi
+            if [ "$(docker inspect -f '{{.State.Running}}' space)" != "true" ]; then break; fi
+            sleep 10
+          done
+          docker logs space 2>&1 | tail -40
+          exit 1

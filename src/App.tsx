@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { getStatus, transcribe, type Status } from "./api";
 import { liveDictationSupported, useLiveDictation } from "./hooks/useLiveDictation";
 import { useVoiceRecorder } from "./hooks/useVoiceRecorder";
-import { LOCAL_MODELS, transcribeLocally, type LocalProgress } from "./localWhisper";
+import { LOCAL_MODELS, TAMIL_MODEL, transcribeLocally, type LocalProgress } from "./localWhisper";
 import { SARVAM_PROXY_URL, sarvamSupports, transcribeWithSarvam, type OutputStyle } from "./sarvam";
 import { SANSA_ENGINE_URL, SansaLanguageUnavailable, sansaSupports, transcribeWithSansa } from "./sansaEngine";
 import { keyTerms, parseMyWords, polish, toSrt, toTimedText, toVtt, type Segment, type Transcript } from "./transcript";
@@ -68,10 +68,16 @@ export default function App() {
   const [status, setStatus] = useState<Status>({ ai: false, model: null });
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<LocalProgress | null>(null);
-  const [localModel, setLocalModel] = useState(() => load("vtt.model", LOCAL_MODELS[0].id));
+  const [generalModel, setGeneralModel] = useState(() => {
+    const m = load("vtt.model", "onnx-community/whisper-small");
+    return LOCAL_MODELS.some((x) => x.id === m && !x.lang) ? m : "onnx-community/whisper-small";
+  });
+  const [tamilModel, setTamilModel] = useState(() => load("vtt.modelTa", TAMIL_MODEL));
   const [engine, setEngine] = useState<"sansa" | "sarvam" | "free">(() => {
-    const e = load("vtt.engine", "sansa");
-    return e === "free" || e === "sarvam" ? e : "sansa";
+    const e = load("vtt.engine", "free");
+    // Without an engine address, SANSA engine would just fall back; start on the on-device engine.
+    if (e === "sansa" && !SANSA_ENGINE_URL && !load("vtt.engineUrl", "")) return "free";
+    return e === "sansa" || e === "sarvam" ? e : "free";
   });
   const [engineUrl, setEngineUrl] = useState(() => load("vtt.engineUrl", ""));
   const [sarvamKey, setSarvamKey] = useState(() => load("vtt.sarvamKey", ""));
@@ -101,7 +107,8 @@ export default function App() {
   }, []);
   useEffect(() => save(STORAGE_KEY, text), [text]);
   useEffect(() => save("vtt.lang", langId), [langId]);
-  useEffect(() => save("vtt.model", localModel), [localModel]);
+  useEffect(() => save("vtt.model", generalModel), [generalModel]);
+  useEffect(() => save("vtt.modelTa", tamilModel), [tamilModel]);
   useEffect(() => save("vtt.engine", engine), [engine]);
   useEffect(() => save("vtt.sarvamKey", sarvamKey.trim()), [sarvamKey]);
   useEffect(() => save("vtt.engineUrl", engineUrl.trim()), [engineUrl]);
@@ -120,6 +127,12 @@ export default function App() {
     if (!chunk) return;
     setText((prev) => (prev && !prev.endsWith("\n") ? `${prev} ${chunk}` : prev + chunk));
   };
+
+  // Tamil gets the Tamil-trained model by default; other languages use the general Whisper models.
+  const isTamil = lang.api === "ta";
+  const localModel = isTamil ? tamilModel : generalModel;
+  const setLocalModel = isTamil ? setTamilModel : setGeneralModel;
+  const modelChoices = LOCAL_MODELS.filter((m) => !m.lang || m.lang === lang.api);
 
   const live = useLiveDictation(lang.id === "auto" ? "ta-IN" : lang.id, (chunk) => append(finish({ text: chunk, segments: [] }).text));
   const recorder = useVoiceRecorder();
@@ -147,7 +160,11 @@ export default function App() {
     try {
       // Sarvam AI (most accurate for Indian languages) when chosen and supported;
       // else server OpenAI when configured; else free on-device Whisper.
-      const local = () => transcribeLocally(audio, lang.api ?? "", localModel, setProgress, translateLocally ? "translate" : "transcribe");
+      // The Tamil-trained model only writes Tamil, so English translation uses the general model.
+      const local = () =>
+        translateLocally
+          ? transcribeLocally(audio, lang.api ?? "", generalModel, setProgress, "translate")
+          : transcribeLocally(audio, lang.api ?? "", localModel, setProgress);
       const raw: Transcript = translateLocally
         ? await local()
         : useSansa
@@ -403,7 +420,7 @@ export default function App() {
           <label className="field">
             <span>Speech model (runs free on your device, downloads once)</span>
             <select value={localModel} onChange={(e) => setLocalModel(e.target.value)} disabled={busy}>
-              {LOCAL_MODELS.map((m) => (
+              {modelChoices.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.label}
                 </option>
