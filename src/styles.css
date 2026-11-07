@@ -82,3 +82,27 @@ textarea:focus, select:focus { outline: 2px solid rgb(124 108 255 / 0.6); outlin
 .tabs.two { grid-template-columns: repeat(2, 1fr); }
 input[type="password"], input[type="url"] { font: inherit; color: var(--text); padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--card-solid); width: 100%; }
 .field a { color: var(--accent-2); }
+
+/* Output styles, Clean mode, My words */
+.tabs.four { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 520px) { .tabs.four { grid-template-columns: repeat(2, 1fr); } }
+.options { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.check { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.92rem; }
+.check input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--accent); }
+.check small { display: block; color: var(--muted); font-size: 0.78rem; }
+button.link { border: 0; background: none; color: var(--accent-2); cursor: pointer; padding: 6px 2px; font-size: 0.9rem; }
+textarea.small { font-size: 0.92rem; line-height: 1.5; padding: 10px 12px; }
+.field code { background: rgb(255 255 255 / 0.08); padding: 1px 5px; border-radius: 6px; }
+
+/* Timeline: synced audio + lines */
+.timeline { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
+.timeline-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.timeline-head h3 { margin: 0; font-size: 0.98rem; }
+.timeline audio { width: 100%; }
+.hint.left { text-align: left; }
+.lines { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; display: grid; gap: 2px; }
+.lines button { width: 100%; display: grid; grid-template-columns: 52px 1fr; gap: 10px; text-align: left; border: 0; background: transparent; padding: 8px 10px; border-radius: 10px; cursor: pointer; line-height: 1.55; }
+.lines button:hover:not(:disabled) { background: rgb(255 255 255 / 0.06); }
+.lines button:disabled { cursor: default; }
+.lines button.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.lines time { color: var(--accent-2); font-variant-numeric: tabular-nums; font-size: 0.82rem; padding-top: 2px; }

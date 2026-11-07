@@ -9,6 +9,9 @@ Simple voice to text converter. Pesunga, text aagidum. Tamil + English.
 - **Optional server AI:** if the Node server has `OPENAI_API_KEY`, those two tabs use OpenAI `gpt-4o-mini-transcribe` instead (paid, usually more accurate, ffmpeg converts odd formats).
 - Languages: Tamil, English, Hindi, Telugu, Kannada, Malayalam, Bengali, Marathi, Gujarati, Punjabi, Urdu, Assamese, Nepali, Sanskrit, Sindhi, plus "Mixed / auto detect" for upload/record. Odia works with Live mic only (Whisper has no Odia model). Live mic language support depends on the browser; Chrome covers the major Indian languages.
 - Installable: on Android Chrome use "Add to Home screen" to get an app icon.
+- **Write the text as:** As spoken, English (translate), Tanglish (English letters) or Mixed. English works free on-device; Tanglish and Mixed need Sarvam AI for now.
+- **Timeline and subtitles:** after Upload/Record, every line gets a time. Play the audio, the current line lights up, tap a line to jump there. Download subtitles as `.srt` / `.vtt` or text with times.
+- **Clean mode:** removes fillers (umm, uh, ம்ம்) and tidies punctuation. **My words:** names SANSA should spell right (`wrong = Right` fixes a common mistake); also sent to Sarvam as key terms.
 - Edit the text, copy it, or download it as `.txt`. The text is kept in your browser if you reload.
 
 ## Own free engine: SANSA engine
@@ -17,7 +20,7 @@ Simple voice to text converter. Pesunga, text aagidum. Tamil + English.
 
 ## Accurate mode: Sarvam AI
 
-Upload and Record can use [Sarvam AI](https://www.sarvam.ai) (`saarika:v2.5`), which is trained on Indian languages and is far more accurate than the free on-device model for Tamil, Hindi, Telugu, Kannada, Malayalam, Bengali, Marathi, Gujarati, Punjabi, Odia and Indian English. Long files are split into ≤25 s pieces at quiet points (Sarvam's per-request limit is 30 s).
+Upload and Record can use [Sarvam AI](https://www.sarvam.ai) (`saaras:v4`), which is trained on Indian languages and is far more accurate than the free on-device model for Tamil, Hindi, Telugu, Kannada, Malayalam, Bengali, Marathi, Gujarati, Punjabi, Odia and Indian English. Long files are split into ≤25 s pieces at quiet points (Sarvam's per-request limit is 30 s).
 
 The key is never part of the public site:
 - **Personal use:** paste your key in the app (Speech engine → Sarvam AI). It is stored only in your browser.
