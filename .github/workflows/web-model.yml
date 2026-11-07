@@ -100,6 +100,11 @@ jobs:
           python3 webmodel/make-long-clip.py /tmp/long.mp3
           ffprobe -v error -show_entries format=duration -of csv=p=0 /tmp/long.mp3
           node webmodel/browser-test.cjs /tmp/long.mp3 "$(cat /tmp/long.mp3.txt)"
+          echo "--- same clip, phone quality + background noise ---"
+          ffmpeg -loglevel error -y -i /tmp/long.mp3 -f lavfi -i "anoisesrc=color=pink:amplitude=0.06:seed=7" \
+            -filter_complex "[0:a]highpass=f=300,lowpass=f=3400[s];[s][1:a]amix=inputs=2:duration=first:normalize=0,aresample=8000" -ac 1 /tmp/noisy.wav
+          echo "noise clean-up OFF:"; node webmodel/browser-test.cjs /tmp/noisy.wav "$(cat /tmp/long.mp3.txt)" | grep -E "words matched|error box"
+          echo "noise clean-up ON:"; DENOISE=1 node webmodel/browser-test.cjs /tmp/noisy.wav "$(cat /tmp/long.mp3.txt)" | grep -E "words matched|error box"
           [ -n "$LONG_ONLY" ] && exit 0
           echo "--- other file formats (browser decoder or ffmpeg.wasm fallback) ---"
           sudo apt-get install -y -qq ffmpeg >/dev/null

@@ -120,6 +120,34 @@ function isSilent(samples: Float32Array) {
   return rms[Math.floor(0.95 * (n - 1))] < 0.003;
 }
 
+const norm = (w: string) => w.replace(/[\s"'“”‘’(),.!?…:;।-]+/gu, "").normalize("NFC");
+
+/**
+ * Whisper sometimes says the same phrase twice in a row (a decoding loop, not the speaker).
+ * Drop a run of 4+ words that exactly repeats the run just before it. `prev` is the end of
+ * the previous piece, so a phrase repeated across a piece boundary is dropped too.
+ */
+export function dropRepeats(text: string, prev: string[] = []): string {
+  const words = text.replace(/([.!?।])(?=[^\s.!?।])/gu, "$1 ").split(/\s+/).filter(Boolean);
+  const all = [...prev, ...words];
+  const keys = all.map(norm);
+  const keep = all.map(() => true);
+  for (let i = prev.length; i < all.length; i++) {
+    for (let n = Math.min(40, i); n >= 4; n--) {
+      let same = true;
+      for (let k = 0; k < n && same; k++) {
+        if (i + k >= all.length || !keep[i - n + k] || keys[i + k] !== keys[i - n + k] || !keys[i + k]) same = false;
+      }
+      if (same) {
+        for (let k = 0; k < n; k++) keep[i + k] = false;
+        i += n - 1;
+        break;
+      }
+    }
+  }
+  return all.filter((_, j) => j >= prev.length && keep[j]).join(" ");
+}
+
 /**
  * Fine-tuned models (the Tamil one) were trained without timestamps, so Whisper's own
  * 30 s chunk merging drops words at the joins. Like the SANSA engine, cut the audio at
@@ -130,7 +158,8 @@ async function transcribePieces(asr: AutomaticSpeechRecognitionPipeline, audio: 
   for (const piece of splitOnSilence(audio)) {
     if (isSilent(piece.samples)) continue;
     const out = await asr(piece.samples, { ...(language ? { language } : {}), task, max_new_tokens: 440 });
-    const text = (Array.isArray(out) ? out[0] : out).text.trim();
+    const prev = chunks.length ? chunks[chunks.length - 1].text.split(/\s+/).slice(-40) : [];
+    const text = dropRepeats((Array.isArray(out) ? out[0] : out).text.trim(), prev);
     if (text) chunks.push({ start: piece.start / 16000, end: (piece.start + piece.samples.length) / 16000, text });
   }
   return { text: chunks.map((c) => c.text).join(" "), chunks };
