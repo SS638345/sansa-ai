@@ -23,7 +23,7 @@ cfg["_name_or_path"] = base
 json.dump(cfg, open(f"{src}/config.json", "w"), indent=2)
 shutil.copy(hf_hub_download(base, "generation_config.json"), f"{src}/generation_config.json")
 subprocess.run([sys.executable, "-m", "scripts.convert", "--quantize", "--model_id", src,
-                "--modes", "fp16", "q8", "q4"], check=True)
+                "--task", "automatic-speech-recognition-with-past", "--modes", "fp16", "q8", "q4"], check=True)
 out = os.path.join("models", src)
 print("exported:", sorted(os.listdir(f"{out}/onnx")), flush=True)
 
