@@ -27,6 +27,10 @@ on:
         description: Only run the Colab training notebook on CPU with a tiny model
         type: boolean
         default: false
+      hf_status:
+        description: Only list the models on the Hugging Face account
+        type: boolean
+        default: false
       long_only:
         description: Stop after the long-clip test
         type: boolean
@@ -36,6 +40,23 @@ permissions:
   contents: read
 
 jobs:
+  hf-status:
+    if: ${{ inputs.hf_status }}
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install -q huggingface_hub
+          python3 - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          user = api.whoami()["name"]
+          for m in api.list_models(author=user, full=True):
+              print(m.id, "private" if m.private else "public", m.last_modified)
+          PY
+
   notebook-smoke:
     if: ${{ inputs.notebook_smoke }}
     runs-on: ubuntu-latest
@@ -182,7 +203,7 @@ jobs:
           exit $fail
 
   build:
-    if: ${{ !inputs.browser_test_only && !inputs.model_artifact && !inputs.delete_offline_copy && !inputs.notebook_smoke }}
+    if: ${{ !inputs.browser_test_only && !inputs.model_artifact && !inputs.delete_offline_copy && !inputs.notebook_smoke && !inputs.hf_status }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
