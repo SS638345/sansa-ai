@@ -15,6 +15,10 @@ on:
         description: Skip the export; only run the app in Chromium with the uploaded model
         type: boolean
         default: false
+      long_only:
+        description: Stop after the long-clip test
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -84,6 +88,7 @@ jobs:
       - name: Upload a Tamil clip in the real app
         env:
           MIRROR: /tmp/mirror
+          LONG_ONLY: ${{ inputs.long_only && '1' || '' }}
         run: |
           (npx vite preview --port 4173 &) && sleep 5
           E="இன்று காலை நான் சந்தைக்கு சென்று காய்கறிகள் வாங்கினேன் மழை பெய்ததால் கொஞ்சம் தாமதமாக வீட்டுக்கு வந்தேன்"
@@ -91,6 +96,11 @@ jobs:
           node webmodel/browser-test.cjs /tmp/known.mp3 "$E" onnx-community/whisper-base 2>&1 | tail -20 || true
           echo "--- default Tamil model ---"
           node webmodel/browser-test.cjs /tmp/known.mp3 "$E"
+          echo "--- long clip (2 min, Tamil model) ---"
+          python3 webmodel/make-long-clip.py /tmp/long.mp3
+          ffprobe -v error -show_entries format=duration -of csv=p=0 /tmp/long.mp3
+          node webmodel/browser-test.cjs /tmp/long.mp3 "$(cat /tmp/long.mp3.txt)"
+          [ -n "$LONG_ONLY" ] && exit 0
           echo "--- other file formats (browser decoder or ffmpeg.wasm fallback) ---"
           sudo apt-get install -y -qq ffmpeg >/dev/null
           # Ubuntu's ffmpeg has no AMR encoder; the static build does (Android call recordings are AMR).

@@ -55,8 +55,18 @@ const { chromium } = require("playwright");
   console.log("error box:", err);
   const text = (await page.locator("textarea").inputValue()).trim();
   console.log(`seconds: ${(Date.now() - t0) / 1000}`);
-  console.log("GOT:     ", text);
-  console.log("EXPECTED:", expected);
+  const words = (x) => x.replace(/[.,?!]/g, " ").split(/\s+/).filter(Boolean);
+  const got = new Map();
+  for (const w of words(text)) got.set(w, (got.get(w) ?? 0) + 1);
+  let hit = 0;
+  const ref = words(expected);
+  for (const w of ref) if (got.get(w)) { hit++; got.set(w, got.get(w) - 1); }
+  console.log(`words matched: ${hit}/${ref.length} (${Math.round((100 * hit) / ref.length)}%), got ${words(text).length} words`);
+  if (process.env.OUT) require("node:fs").writeFileSync(process.env.OUT, text);
+  if (!process.env.QUIET) {
+    console.log("GOT:     ", text);
+    console.log("EXPECTED:", expected);
+  }
   await page.unrouteAll({ behavior: "ignoreErrors" });
   await browser.close();
   server.close();
