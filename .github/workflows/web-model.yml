@@ -36,7 +36,8 @@ jobs:
     steps:
       - run: |
           pip install -q huggingface_hub
-          python3 -c "from huggingface_hub import snapshot_download as s; s('santhosh63/${{ inputs.name }}', local_dir='/tmp/m', allow_patterns=['*.json','onnx/encoder_model_quantized.onnx','onnx/decoder_model_merged_quantized.onnx'])"
+          python3 -c "from huggingface_hub import snapshot_download as s; s('santhosh63/${{ inputs.name }}', local_dir='/tmp/m', allow_patterns=['onnx/encoder_model.onnx','onnx/encoder_model_fp16.onnx','onnx/decoder_model_merged_q4.onnx','onnx/decoder_model_merged_fp16.onnx'])"
+          ls -la /tmp/m/onnx
           du -sh /tmp/m
       - name: Put the files on a draft release (not public) for offline tests
         env:
@@ -44,7 +45,7 @@ jobs:
         run: |
           gh release delete offline-test-model -R ${{ github.repository }} -y 2>/dev/null || true
           cd /tmp/m && mv onnx/* . && gh release create offline-test-model -R ${{ github.repository }} --draft \
-            --title "Offline test copy of the Tamil web model (draft, temporary)" --notes "Draft only, for local accuracy tests." --target ${{ github.sha }} *.json *.onnx
+            --title "Offline test copy of the Tamil web model (draft, temporary)" --notes "Draft only, for local accuracy tests." --target ${{ github.sha }} *.onnx
 
   browser:
     if: inputs.browser_test_only
