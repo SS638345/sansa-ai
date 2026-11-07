@@ -32,6 +32,9 @@ jobs:
         run: |
           # NVIDIA's index is unreachable from runners; graphsurgeon is on PyPI too.
           sed -i '/ngc.nvidia/d; s/onnx_graphsurgeon==0.3.27/onnx_graphsurgeon==0.5.2/' /tmp/tjs/scripts/requirements.txt
+          # transformers >= 4.43 makes optimum add a cache_position decoder input that the
+          # transformers.js runtime never feeds ("Missing the following inputs: cache_position").
+          sed -i 's/^transformers\[torch\]==.*/transformers[torch]==4.42.4/' /tmp/tjs/scripts/requirements.txt
           cat /tmp/tjs/scripts/requirements.txt
           pip install -q --extra-index-url https://download.pytorch.org/whl/cpu torch==2.5.1+cpu \
             -r /tmp/tjs/scripts/requirements.txt huggingface_hub gTTS "numpy<2"
