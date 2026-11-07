@@ -421,14 +421,14 @@ export default function App() {
               <input
                 ref={fileRef}
                 type="file"
-                accept="audio/*,video/*,.m4a,.mp3,.wav,.ogg,.webm,.flac,.mp4"
+                accept="audio/*,video/*,.m4a,.mp3,.wav,.ogg,.oga,.opus,.webm,.flac,.mp4,.aac,.amr,.3gp,.3ga,.wma,.caf,.aif,.aiff,.mkv,.mov,.avi,.wmv,.m4b,.mpga"
                 disabled={busy}
                 onChange={(e) => void onFile(e.target.files?.[0])}
               />
               {busy ? "Working…" : "Choose audio or video"}
             </label>
             <p className="hint">
-              mp3, m4a, wav, ogg, WhatsApp voice notes (max 25 MB), or mp4/webm video for subtitles (max 300 MB). First time, the speech
+              Any audio: mp3, m4a, wav, ogg, opus, amr, aac, flac, wma, 3gp, WhatsApp voice notes, call recordings (max 25 MB), or mp4/webm video for subtitles (max 300 MB). First time, the speech
               model downloads once.
             </p>
           </div>

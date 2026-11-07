@@ -7,7 +7,7 @@ const { chromium } = require("playwright");
   const browser = await chromium.launch();
   const page = await browser.newPage();
   page.on("pageerror", (e) => console.log("pageerror:", e.message));
-  page.on("console", (m) => m.type() === "error" && console.log("console:", m.text()));
+  page.on("console", (m) => (m.type() === "error" || /decoder/.test(m.text())) && console.log("console:", m.text()));
   page.on("response", (r) => r.status() >= 300 && console.log("http", r.status(), r.request().method(), r.url()));
   page.on("requestfailed", (r) => console.log("failed", r.method(), r.url(), r.failure()?.errorText));
   // Hugging Face answers 405 to headless Chromium from CI runners (even for onnx-community
