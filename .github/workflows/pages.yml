@@ -24,10 +24,20 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Find the SANSA engine address
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ENGINE_URL: ${{ vars.VITE_SANSA_ENGINE_URL }}
+        run: |
+          if [ -z "$ENGINE_URL" ] && [ -n "$HF_TOKEN" ]; then
+            pip install -q huggingface_hub==0.26.5
+            ENGINE_URL=$(python3 engine/deploy_space.py --url-only || true)
+          fi
+          echo "Engine: ${ENGINE_URL:-none}"
+          echo "VITE_SANSA_ENGINE_URL=$ENGINE_URL" >> "$GITHUB_ENV"
       - run: npm run build
         env:
           VITE_SARVAM_PROXY_URL: ${{ vars.VITE_SARVAM_PROXY_URL }}
-          VITE_SANSA_ENGINE_URL: ${{ vars.VITE_SANSA_ENGINE_URL }}
       - uses: actions/configure-pages@v5
         with:
           enablement: true
