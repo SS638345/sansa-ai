@@ -56,7 +56,9 @@ transformers.js in SANSA Voice to Text. All credit for the model to its authors.
 """)
 sizes = {f: round(os.path.getsize(f"{out}/onnx/{f}") / 1e6) for f in os.listdir(f"{out}/onnx")}
 print("license:", license_, "sizes MB:", json.dumps(sizes), flush=True)
-api.create_repo(repo, exist_ok=True)
+api.create_repo(repo, exist_ok=True, private=False)
+if api.model_info(repo).private:  # accounts can default new repos to private; browsers need public
+    api.update_repo_visibility(repo, private=False)
 # Only the variants the web app loads (the merged decoder replaces the two separate ones).
 keep = ["*.json", "*.txt", "README.md"] + [f"onnx/{f}" for f in [
     "encoder_model.onnx", "encoder_model_fp16.onnx", "encoder_model_quantized.onnx",

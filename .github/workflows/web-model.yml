@@ -31,6 +31,26 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci && npm run build
+      - name: Make sure the model is public (browsers have no token)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install -q huggingface_hub
+          python3 - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          repo = f"{api.whoami()['name']}/${{ inputs.name }}"
+          info = api.model_info(repo)
+          print("before: private", info.private, "gated", info.gated)
+          if info.private:
+              api.update_repo_visibility(repo, private=False)
+          if info.gated:
+              api.update_repo_settings(repo, gated=False)
+          info = api.model_info(repo)
+          print("after: private", info.private, "gated", info.gated)
+          PY
+          curl -s -o /dev/null -w "anonymous config.json: %{http_code}\n" -L "https://huggingface.co/$(python3 -c "import os; from huggingface_hub import HfApi; print(HfApi(token=os.environ['HF_TOKEN']).whoami()['name'])")/${{ inputs.name }}/resolve/main/config.json"
       - name: Install Chromium and test audio
         run: |
           npm install --no-save playwright@1.49.1
