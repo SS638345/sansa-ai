@@ -32,7 +32,9 @@ export async function decodeTo16kMono(blob: Blob): Promise<Float32Array> {
   if (!decoded) {
     try {
       const { ffmpegTo16kMono } = await import("./ffmpegDecode");
-      return await ffmpegTo16kMono(blob);
+      const samples = await ffmpegTo16kMono(blob);
+      console.info("SANSA decoder: ffmpeg.wasm");
+      return samples;
     } catch (e) {
       console.error("ffmpeg decode failed", e);
       throw new Error("Could not read this audio file. It may be damaged, or it has no sound track.");
