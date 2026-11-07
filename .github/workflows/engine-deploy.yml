@@ -1,0 +1,45 @@
+name: Deploy SANSA engine
+
+# Creates/updates the free Hugging Face Space for the engine. Needs the repo secret HF_TOKEN
+# (a Hugging Face "Write" token). Runs by hand and whenever engine/ changes on main.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["engine/**"]
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check token
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::error::Add the repo secret HF_TOKEN (Hugging Face write token) first."
+            exit 1
+          fi
+      - run: pip install -q huggingface_hub==0.26.5
+      - name: Create or update the Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python3 engine/deploy_space.py | tee /tmp/out.txt
+      - name: Wait until the engine answers
+        run: |
+          URL=$(tail -1 /tmp/out.txt)
+          echo "Engine URL: $URL"
+          for i in $(seq 1 90); do
+            if curl -sf "$URL/" ; then echo; echo "Engine is up after $((i*20)) s"; exit 0; fi
+            sleep 20
+          done
+          echo "::warning::The Space is still building; check it on Hugging Face."
+      - name: Rebuild the website with the engine address
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main --repo "$GITHUB_REPOSITORY"
