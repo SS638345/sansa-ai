@@ -14,6 +14,14 @@ import sys
 from huggingface_hub import HfApi, hf_hub_download
 
 src, base, name = sys.argv[1:4]
+# The scripts pick Whisper export settings from config._name_or_path, which must name a base
+# model. Make a local copy (same relative path, so it's found before the Hub) that says so.
+from huggingface_hub import snapshot_download
+snapshot_download(src, local_dir=src, allow_patterns=["*.json", "*.txt", "*.safetensors", "*.bin", "*.model"])
+cfg = json.load(open(f"{src}/config.json"))
+cfg["_name_or_path"] = base
+json.dump(cfg, open(f"{src}/config.json", "w"), indent=2)
+shutil.copy(hf_hub_download(base, "generation_config.json"), f"{src}/generation_config.json")
 subprocess.run([sys.executable, "-m", "scripts.convert", "--quantize", "--model_id", src,
                 "--modes", "fp16", "q8", "q4"], check=True)
 out = os.path.join("models", src)
