@@ -91,6 +91,25 @@ jobs:
           node webmodel/browser-test.cjs /tmp/known.mp3 "$E" onnx-community/whisper-base 2>&1 | tail -20 || true
           echo "--- default Tamil model ---"
           node webmodel/browser-test.cjs /tmp/known.mp3 "$E"
+          echo "--- other file formats (browser decoder or ffmpeg.wasm fallback) ---"
+          sudo apt-get install -y -qq ffmpeg >/dev/null
+          ffmpeg -loglevel error -i /tmp/known.mp3 -ar 8000 -ac 1 -c:a libopencore_amrnb -b:a 12.2k /tmp/known.amr \
+            || ffmpeg -loglevel error -i /tmp/known.mp3 -ar 8000 -ac 1 -c:a amr_nb /tmp/known.amr || true
+          ffmpeg -loglevel error -i /tmp/known.mp3 -ar 8000 -ac 1 -c:a aac /tmp/known.3gp
+          ffmpeg -loglevel error -i /tmp/known.mp3 -c:a wmav2 /tmp/known.wma
+          ffmpeg -loglevel error -i /tmp/known.mp3 -c:a aac /tmp/known.aac
+          ffmpeg -loglevel error -i /tmp/known.mp3 -c:a libopus /tmp/known.opus
+          ffmpeg -loglevel error -i /tmp/known.mp3 /tmp/known.flac
+          ffmpeg -loglevel error -i /tmp/known.mp3 -c:a pcm_s16le /tmp/known.caf
+          ls -la /tmp/known.*
+          set -o pipefail; fail=0
+          for f in /tmp/known.amr /tmp/known.3gp /tmp/known.wma /tmp/known.aac /tmp/known.opus /tmp/known.flac /tmp/known.caf; do
+            [ -s "$f" ] || { echo "skip $f (could not make it)"; continue; }
+            echo "=== $f"
+            node webmodel/browser-test.cjs "$f" "$E" onnx-community/whisper-base 2>&1 | grep -E "model:|seconds:|GOT:|error|ffmpeg" || fail=1
+          done
+          [ -s /tmp/known.amr ] && { echo "=== Tamil model on amr"; node webmodel/browser-test.cjs /tmp/known.amr "$E" 2>&1 | grep -E "seconds:|GOT:|error" ; }
+          exit $fail
 
   build:
     if: ${{ !inputs.browser_test_only }}

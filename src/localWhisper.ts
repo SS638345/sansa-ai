@@ -16,17 +16,27 @@ export type LocalProgress =
   | { stage: "loading"; percent: number | null }
   | { stage: "transcribing" };
 
-/** Decode any browser-playable audio (mp3, m4a, wav, ogg, webm...) to 16 kHz mono samples. */
+/** Decode any audio or video file to 16 kHz mono samples. The browser's own decoder handles
+ * mp3, m4a, wav, ogg, webm...; anything else (amr, 3gp, wma, aac, caf...) goes through ffmpeg.wasm. */
 export async function decodeTo16kMono(blob: Blob): Promise<Float32Array> {
   const data = await blob.arrayBuffer();
   const ctx = new AudioContext();
-  let decoded: AudioBuffer;
+  let decoded: AudioBuffer | null = null;
   try {
     decoded = await ctx.decodeAudioData(data);
   } catch {
-    throw new Error("Could not read this audio file. Try mp3, m4a, wav or ogg.");
+    decoded = null;
   } finally {
     void ctx.close();
+  }
+  if (!decoded) {
+    try {
+      const { ffmpegTo16kMono } = await import("./ffmpegDecode");
+      return await ffmpegTo16kMono(blob);
+    } catch (e) {
+      console.error("ffmpeg decode failed", e);
+      throw new Error("Could not read this audio file. It may be damaged, or it has no sound track.");
+    }
   }
   const targetRate = 16000;
   const length = Math.ceil(decoded.duration * targetRate);
