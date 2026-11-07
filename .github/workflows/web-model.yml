@@ -34,7 +34,7 @@ jobs:
           sed -i '/ngc.nvidia/d; s/onnx_graphsurgeon==0.3.27/onnx_graphsurgeon==0.5.2/' /tmp/tjs/scripts/requirements.txt
           cat /tmp/tjs/scripts/requirements.txt
           pip install -q --extra-index-url https://download.pytorch.org/whl/cpu torch==2.5.1+cpu \
-            -r /tmp/tjs/scripts/requirements.txt huggingface_hub gTTS
+            -r /tmp/tjs/scripts/requirements.txt huggingface_hub gTTS "numpy<2"
           python3 -c "import torch, transformers; print('torch', torch.__version__, 'transformers', transformers.__version__)"
       - name: Export and upload
         working-directory: /tmp/tjs
