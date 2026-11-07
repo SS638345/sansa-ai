@@ -78,7 +78,8 @@ export default function App() {
   });
   const [tamilModel, setTamilModel] = useState(() => load("vtt.modelTa", TAMIL_MODEL));
   const [engine, setEngine] = useState<"sansa" | "sarvam" | "free">(() => {
-    const e = load("vtt.engine", "free");
+    // A build with its own engine (sansaai.in home server) starts on it; elsewhere on-device.
+    const e = load("vtt.engine", SANSA_ENGINE_URL ? "sansa" : "free");
     // Without an engine address, SANSA engine would just fall back; start on the on-device engine.
     if (e === "sansa" && !SANSA_ENGINE_URL && !load("vtt.engineUrl", "")) return "free";
     return e === "sansa" || e === "sarvam" ? e : "free";
