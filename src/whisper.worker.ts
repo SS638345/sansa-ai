@@ -82,12 +82,70 @@ async function load(model: string) {
   return asr;
 }
 
+/** Cut long audio at the quietest moment between minSec and maxSec, like the SANSA engine does. */
+function splitOnSilence(audio: Float32Array, maxSec = 25, minSec = 15) {
+  const RATE = 16000;
+  const frame = RATE / 10;
+  const out: { start: number; samples: Float32Array }[] = [];
+  let start = 0;
+  while (audio.length - start > maxSec * RATE) {
+    let best = start + maxSec * RATE;
+    let bestEnergy = Infinity;
+    for (let f = start + minSec * RATE; f + frame <= start + maxSec * RATE; f += frame) {
+      let e = 0;
+      for (let i = f; i < f + frame; i++) e += audio[i] * audio[i];
+      if (e < bestEnergy) {
+        bestEnergy = e;
+        best = f + frame / 2;
+      }
+    }
+    out.push({ start, samples: audio.subarray(start, best) });
+    start = best;
+  }
+  if (audio.length - start > RATE / 4) out.push({ start, samples: audio.subarray(start) });
+  return out;
+}
+
+/** Whisper invents text for silence; skip pieces with no speech-level energy. */
+function isSilent(samples: Float32Array) {
+  const n = Math.floor(samples.length / 400);
+  if (n === 0) return true;
+  const rms: number[] = [];
+  for (let k = 0; k < n; k++) {
+    let e = 0;
+    for (let i = k * 400; i < (k + 1) * 400; i++) e += samples[i] * samples[i];
+    rms.push(Math.sqrt(e / 400));
+  }
+  rms.sort((a, b) => a - b);
+  return rms[Math.floor(0.95 * (n - 1))] < 0.003;
+}
+
+/**
+ * Fine-tuned models (the Tamil one) were trained without timestamps, so Whisper's own
+ * 30 s chunk merging drops words at the joins. Like the SANSA engine, cut the audio at
+ * pauses into pieces under 30 s and transcribe each piece whole.
+ */
+async function transcribePieces(asr: AutomaticSpeechRecognitionPipeline, audio: Float32Array, language: string, task: string) {
+  const chunks: WorkerChunk[] = [];
+  for (const piece of splitOnSilence(audio)) {
+    if (isSilent(piece.samples)) continue;
+    const out = await asr(piece.samples, { ...(language ? { language } : {}), task, max_new_tokens: 440 });
+    const text = (Array.isArray(out) ? out[0] : out).text.trim();
+    if (text) chunks.push({ start: piece.start / 16000, end: (piece.start + piece.samples.length) / 16000, text });
+  }
+  return { text: chunks.map((c) => c.text).join(" "), chunks };
+}
+
 self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
   const { audio, language, model, task } = e.data;
   try {
     post({ type: "status", status: "loading" });
     const asr = await load(model);
     post({ type: "status", status: "transcribing" });
+    if (model.includes("tamil")) {
+      post({ type: "done", ...(await transcribePieces(asr, audio, language, task)) });
+      return;
+    }
     const opts = {
       ...(language ? { language } : {}),
       task,
