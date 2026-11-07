@@ -11,12 +11,40 @@ on:
         default: openai/whisper-medium
       name:
         default: whisper-tamil-medium-web
+      browser_test_only:
+        description: Skip the export; only run the app in Chromium with the uploaded model
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
+  browser:
+    if: inputs.browser_test_only
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci && npm run build
+      - name: Install Chromium and test audio
+        run: |
+          npm install --no-save playwright@1.49.1
+          npx playwright install --with-deps chromium
+          sudo apt-get install -y -qq ffmpeg >/dev/null
+          pip install -q gTTS
+          python3 -c "from gtts import gTTS; gTTS('இன்று காலை நான் சந்தைக்கு சென்று காய்கறிகள் வாங்கினேன். மழை பெய்ததால் கொஞ்சம் தாமதமாக வீட்டுக்கு வந்தேன்.', lang='ta').save('/tmp/known.mp3')"
+      - name: Upload a Tamil clip in the real app
+        run: |
+          (npx vite preview --port 4173 &) && sleep 5
+          node webmodel/browser-test.cjs /tmp/known.mp3 "இன்று காலை நான் சந்தைக்கு சென்று காய்கறிகள் வாங்கினேன் மழை பெய்ததால் கொஞ்சம் தாமதமாக வீட்டுக்கு வந்தேன்"
+
   build:
+    if: ${{ !inputs.browser_test_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:

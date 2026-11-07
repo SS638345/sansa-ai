@@ -1,10 +1,14 @@
 import type { WorkerMessage, WorkerRequest } from "./whisper.worker";
 
-export const LOCAL_MODELS = [
+/** IIT Madras SPRING Lab's Tamil Whisper medium, converted for the browser (webmodel/ in this repo). */
+export const TAMIL_MODEL = "santhosh63/whisper-tamil-medium-web";
+
+export const LOCAL_MODELS: readonly { id: string; label: string; lang?: string }[] = [
+  { id: TAMIL_MODEL, label: "Tamil best: Tamil-trained model (about 1 GB, downloads once)", lang: "ta" },
   { id: "onnx-community/whisper-small", label: "Balanced (about 400 MB download)" },
   { id: "onnx-community/whisper-large-v3-turbo", label: "Best (about 1 GB, needs a good PC with Chrome)" },
   { id: "onnx-community/whisper-base", label: "Fast but less accurate (about 150 MB)" },
-] as const;
+];
 
 export type LocalProgress =
   | { stage: "decoding" }

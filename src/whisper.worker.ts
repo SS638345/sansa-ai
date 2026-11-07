@@ -24,9 +24,14 @@ function load(model: string) {
   const asr = pipeline("automatic-speech-recognition", model, {
     device: hasGpu ? "webgpu" : "wasm",
     // Full-precision encoder: quantizing it costs a lot of accuracy on Indian languages.
-    dtype: hasGpu
-      ? { encoder_model: model.includes("large") ? "fp16" : "fp32", decoder_model_merged: "q4" }
-      : { encoder_model: model.includes("large") ? "q8" : "fp32", decoder_model_merged: "q8" },
+    // The Tamil medium export was checked word-for-word on Tamil speech with fp16/q4 and q8/q8.
+    dtype: model.includes("tamil-medium")
+      ? hasGpu
+        ? { encoder_model: "fp16", decoder_model_merged: "q4" }
+        : { encoder_model: "q8", decoder_model_merged: "q8" }
+      : hasGpu
+        ? { encoder_model: model.includes("large") ? "fp16" : "fp32", decoder_model_merged: "q4" }
+        : { encoder_model: model.includes("large") ? "q8" : "fp32", decoder_model_merged: "q8" },
     progress_callback: (p: { status: string; file?: string; loaded?: number; total?: number }) => {
       if (p.status === "progress" && p.file) {
         files.set(p.file, { loaded: p.loaded ?? 0, total: p.total ?? 0 });
