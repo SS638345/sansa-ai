@@ -14,8 +14,14 @@ const { chromium } = require("playwright");
   // models), while plain requests from the same machine work. Fetch model files outside the
   // page and hand them back, so the app code itself still runs unchanged.
   await page.route(/https:\/\/([a-z0-9-]+\.)*(huggingface\.co|hf\.co)\//, async (route) => {
-    const res = await route.fetch({ maxRedirects: 10, timeout: 15 * 60 * 1000 });
-    await route.fulfill({ response: res, headers: { ...res.headers(), "access-control-allow-origin": "*" } });
+    try {
+      const res = await route.fetch({ maxRedirects: 10, timeout: 15 * 60 * 1000 });
+      if (res.status() >= 400) console.log("hf", res.status(), route.request().url());
+      await route.fulfill({ response: res, headers: { ...res.headers(), "access-control-allow-origin": "*" } });
+    } catch (e) {
+      console.log("route error", route.request().url(), String(e).slice(0, 200));
+      await route.abort().catch(() => {});
+    }
   });
   await page.goto("http://localhost:4173/");
   await page.getByRole("tab", { name: /Upload audio/ }).click();
@@ -31,10 +37,12 @@ const { chromium } = require("playwright");
     { timeout: 20 * 60 * 1000, polling: 2000 },
   );
   const err = await page.locator(".error").textContent().catch(() => null);
+  console.log("error box:", err);
   const text = (await page.locator("textarea").inputValue()).trim();
   console.log(`seconds: ${(Date.now() - t0) / 1000}`);
   console.log("GOT:     ", text);
   console.log("EXPECTED:", expected);
+  await page.unrouteAll({ behavior: "ignoreErrors" });
   await browser.close();
   if (err || !text) {
     console.log("error:", err);
