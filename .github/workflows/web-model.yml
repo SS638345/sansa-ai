@@ -51,6 +51,16 @@ jobs:
           print("after: private", info.private, "gated", info.gated)
           PY
           curl -s -o /dev/null -w "anonymous config.json: %{http_code}\n" -L "https://huggingface.co/$(python3 -c "import os; from huggingface_hub import HfApi; print(HfApi(token=os.environ['HF_TOKEN']).whoami()['name'])")/${{ inputs.name }}/resolve/main/config.json"
+      - name: Compare how Hugging Face answers browsers
+        run: |
+          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/131.0.0.0 Safari/537.36"
+          for repo in santhosh63/${{ inputs.name }} onnx-community/whisper-base; do
+            u="https://huggingface.co/$repo/resolve/main/config.json"
+            echo "$repo plain: $(curl -s -o /dev/null -w '%{http_code}' -L "$u")"
+            echo "$repo origin: $(curl -s -o /dev/null -w '%{http_code}' -L -H 'Origin: http://localhost:4173' "$u")"
+            echo "$repo headless UA: $(curl -s -o /dev/null -w '%{http_code}' -L -A "$UA" "$u")"
+            curl -s -D - -o /tmp/body -A "$UA" -H 'Origin: http://localhost:4173' "$u" | head -20; head -c 300 /tmp/body; echo
+          done
       - name: Install Chromium and test audio
         run: |
           npm install --no-save playwright@1.49.1
