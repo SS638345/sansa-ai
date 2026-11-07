@@ -31,16 +31,21 @@ jobs:
   artifact:
     if: ${{ inputs.model_artifact }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - run: |
           pip install -q huggingface_hub
           python3 -c "from huggingface_hub import snapshot_download as s; s('santhosh63/${{ inputs.name }}', local_dir='/tmp/m', allow_patterns=['*.json','onnx/encoder_model_quantized.onnx','onnx/decoder_model_merged_quantized.onnx'])"
           du -sh /tmp/m
-      - uses: actions/upload-artifact@v4
-        with:
-          name: tamil-web-model
-          path: /tmp/m
-          retention-days: 2
+      - name: Put the files on a draft release (not public) for offline tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete offline-test-model -R ${{ github.repository }} -y 2>/dev/null || true
+          cd /tmp/m && mv onnx/* . && gh release create offline-test-model -R ${{ github.repository }} --draft \
+            --title "Offline test copy of the Tamil web model (draft, temporary)" --notes "Draft only, for local accuracy tests." --target ${{ github.sha }} *.json *.onnx
+
   browser:
     if: inputs.browser_test_only
     runs-on: ubuntu-latest
