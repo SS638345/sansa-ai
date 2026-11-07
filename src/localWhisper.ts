@@ -1,4 +1,5 @@
 import type { WorkerMessage, WorkerRequest } from "./whisper.worker";
+import type { Segment, Transcript } from "./transcript";
 
 /** IIT Madras SPRING Lab's Tamil Whisper medium, converted for the browser (webmodel/ in this repo). */
 export const TAMIL_MODEL = "santhosh63/whisper-tamil-medium-web";
@@ -50,21 +51,28 @@ export async function transcribeLocally(
   language: string,
   model: string,
   onProgress: (p: LocalProgress) => void,
-): Promise<string> {
+  task: "transcribe" | "translate" = "transcribe",
+): Promise<Transcript> {
   onProgress({ stage: "decoding" });
   const audio = await decodeTo16kMono(blob);
   if (audio.length < 1600) throw new Error("The audio is too short.");
   const w = getWorker();
-  return new Promise<string>((resolve, reject) => {
+  const duration = audio.length / 16000;
+  return new Promise<Transcript>((resolve, reject) => {
     w.onmessage = (e: MessageEvent<WorkerMessage>) => {
       const m = e.data;
       if (m.type === "progress") onProgress({ stage: "loading", percent: m.total ? Math.round((m.loaded / m.total) * 100) : null });
       else if (m.type === "status") onProgress(m.status === "loading" ? { stage: "loading", percent: null } : { stage: "transcribing" });
-      else if (m.type === "done") resolve(m.text);
+      else if (m.type === "done") {
+        const segments: Segment[] = m.chunks
+          .filter((c) => c.text)
+          .map((c) => ({ start: c.start, end: c.end ?? duration, text: c.text }));
+        resolve({ text: m.text, segments });
+      }
       else reject(new Error(m.message));
     };
     w.onerror = (e) => reject(new Error(e.message || "Speech engine failed to start."));
-    const req: WorkerRequest = { type: "transcribe", audio, language, model };
+    const req: WorkerRequest = { type: "transcribe", audio, language, model, task };
     w.postMessage(req, [audio.buffer]);
   });
 }

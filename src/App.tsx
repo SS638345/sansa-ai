@@ -3,8 +3,17 @@ import { getStatus, transcribe, type Status } from "./api";
 import { liveDictationSupported, useLiveDictation } from "./hooks/useLiveDictation";
 import { useVoiceRecorder } from "./hooks/useVoiceRecorder";
 import { LOCAL_MODELS, TAMIL_MODEL, transcribeLocally, type LocalProgress } from "./localWhisper";
-import { SARVAM_PROXY_URL, sarvamSupports, transcribeWithSarvam } from "./sarvam";
+import { SARVAM_PROXY_URL, sarvamSupports, transcribeWithSarvam, type OutputStyle } from "./sarvam";
 import { SANSA_ENGINE_URL, SansaLanguageUnavailable, sansaSupports, transcribeWithSansa } from "./sansaEngine";
+import { keyTerms, parseMyWords, polish, toSrt, toTimedText, toVtt, type Segment, type Transcript } from "./transcript";
+import { Timeline } from "./Timeline";
+
+const STYLES: { id: OutputStyle; label: string; note: string }[] = [
+  { id: "native", label: "As spoken", note: "same language" },
+  { id: "english", label: "English", note: "translate" },
+  { id: "roman", label: "Tanglish", note: "English letters" },
+  { id: "codemix", label: "Mixed", note: "Tamil + English words" },
+];
 
 // id: browser live-mic language tag. api: Whisper code for upload/record, or null when
 // Whisper has no model for that language (e.g. Odia), so only live mic can be offered.
@@ -75,6 +84,22 @@ export default function App() {
   const [pieces, setPieces] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [style, setStyle] = useState<OutputStyle>(() => {
+    const v = load("vtt.style", "native");
+    return STYLES.some((x) => x.id === v) ? (v as OutputStyle) : "native";
+  });
+  const [clean, setClean] = useState(() => load("vtt.clean", "0") === "1");
+  const [myWords, setMyWords] = useState(() => load("vtt.myWords", ""));
+  const [showWords, setShowWords] = useState(false);
+  const [segments, setSegments] = useState<Segment[]>(() => {
+    try {
+      const v = JSON.parse(load("vtt.segments", "[]")) as unknown;
+      return Array.isArray(v) ? (v as Segment[]) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -87,6 +112,16 @@ export default function App() {
   useEffect(() => save("vtt.engine", engine), [engine]);
   useEffect(() => save("vtt.sarvamKey", sarvamKey.trim()), [sarvamKey]);
   useEffect(() => save("vtt.engineUrl", engineUrl.trim()), [engineUrl]);
+  useEffect(() => save("vtt.style", style), [style]);
+  useEffect(() => save("vtt.clean", clean ? "1" : "0"), [clean]);
+  useEffect(() => save("vtt.myWords", myWords), [myWords]);
+  useEffect(() => save("vtt.segments", JSON.stringify(segments)), [segments]);
+  useEffect(() => () => {
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+  }, [audioUrl]);
+
+  const rules = parseMyWords(myWords);
+  const finish = (t: Transcript) => polish(t, { clean, rules });
 
   const append = (chunk: string) => {
     if (!chunk) return;
@@ -99,7 +134,7 @@ export default function App() {
   const setLocalModel = isTamil ? setTamilModel : setGeneralModel;
   const modelChoices = LOCAL_MODELS.filter((m) => !m.lang || m.lang === lang.api);
 
-  const live = useLiveDictation(lang.id === "auto" ? "ta-IN" : lang.id, append);
+  const live = useLiveDictation(lang.id === "auto" ? "ta-IN" : lang.id, (chunk) => append(finish({ text: chunk, segments: [] }).text));
   const recorder = useVoiceRecorder();
 
   const sarvamReady = Boolean(SARVAM_PROXY_URL || sarvamKey.trim());
@@ -109,6 +144,10 @@ export default function App() {
   const remoteReady = engine === "sansa" ? Boolean(sansaUrl) : sarvamReady;
   const remoteSupports = engine === "sansa" ? sansaSupports(lang.id) : sarvamSupports(lang.id);
   const remoteName = engine === "sansa" ? "SANSA engine" : "Sarvam AI";
+  // Output styles: Sarvam does all four. Without Sarvam, English uses on-device Whisper's
+  // free translate; Tanglish and Mixed are not available yet, so text stays as spoken.
+  const styleNeedsSarvam = (style === "roman" || style === "codemix") && !useSarvam;
+  const translateLocally = style === "english" && !useSarvam;
 
   const runTranscribe = async (audio: Blob) => {
     if (audio.size === 0) return;
@@ -121,20 +160,40 @@ export default function App() {
     try {
       // Sarvam AI (most accurate for Indian languages) when chosen and supported;
       // else server OpenAI when configured; else free on-device Whisper.
-      const out = useSansa
+      // The Tamil-trained model only writes Tamil, so English translation uses the general model.
+      const local = () =>
+        translateLocally
+          ? transcribeLocally(audio, lang.api ?? "", generalModel, setProgress, "translate")
+          : transcribeLocally(audio, lang.api ?? "", localModel, setProgress);
+      const raw: Transcript = translateLocally
+        ? await local()
+        : useSansa
         ? await transcribeWithSansa(audio, lang.id, sansaUrl!, (done, total) => setPieces({ done, total })).catch((e) => {
             // Engine has no model for this language yet: fall back to the free on-device engine.
             if (!(e instanceof SansaLanguageUnavailable)) throw e;
             setPieces(null);
-            return transcribeLocally(audio, lang.api ?? "", localModel, setProgress);
+            return local();
           })
         : useSarvam
-        ? await transcribeWithSarvam(audio, lang.id, sarvamKey.trim() || null, (done, total) => setPieces({ done, total }))
+        ? await transcribeWithSarvam(
+            audio,
+            lang.id,
+            sarvamKey.trim() || null,
+            (done, total) => setPieces({ done, total }),
+            style,
+            keyTerms(rules),
+          )
         : status.ai
-          ? await transcribe(audio, lang.api ?? "")
-          : await transcribeLocally(audio, lang.api ?? "", localModel, setProgress);
-      if (!out) setError("No speech found in this audio.");
-      append(out);
+          ? { text: await transcribe(audio, lang.api ?? ""), segments: [] }
+          : await local();
+      const out = finish(raw);
+      if (!out.text) {
+        setError("No speech found in this audio.");
+        return;
+      }
+      append(out.text);
+      setSegments(out.segments);
+      setAudioUrl(out.segments.length ? URL.createObjectURL(audio) : null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Transcription failed.");
     } finally {
@@ -177,11 +236,11 @@ export default function App() {
     }
   };
 
-  const download = () => {
-    const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+  const download = (content: string, ext: string) => {
+    const url = URL.createObjectURL(new Blob([content], { type: "text/plain;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `transcript-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.txt`;
+    a.download = `transcript-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -369,6 +428,60 @@ export default function App() {
             </select>
           </label>
         )}
+        {mode !== "live" && (
+          <div className="field">
+            <span>Write the text as</span>
+            <div className="tabs four" role="radiogroup">
+              {STYLES.map((x) => (
+                <button
+                  key={x.id}
+                  role="radio"
+                  aria-checked={style === x.id}
+                  aria-selected={style === x.id}
+                  onClick={() => setStyle(x.id)}
+                  disabled={busy}
+                >
+                  {x.label} <small>{x.note}</small>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {mode !== "live" && styleNeedsSarvam && (
+          <p className="notice">
+            {style === "roman" ? "Tanglish" : "Mixed"} output needs the Sarvam AI engine for now (free option is coming with the SANSA engine). Until then the text is written as spoken.
+          </p>
+        )}
+        {mode !== "live" && translateLocally && engine !== "free" && (
+          <p className="notice">English translation runs free on this device with Whisper{engine === "sarvam" ? " until a Sarvam key is added" : ""}.</p>
+        )}
+
+        <div className="options">
+          <label className="check">
+            <input type="checkbox" checked={clean} onChange={(e) => setClean(e.target.checked)} />
+            <span>
+              Clean mode <small>removes umm, uh, ம்ம் and tidies punctuation</small>
+            </span>
+          </label>
+          <button className="link" onClick={() => setShowWords((v) => !v)} aria-expanded={showWords}>
+            My words{rules.length ? ` (${rules.length})` : ""} {showWords ? "▴" : "▾"}
+          </button>
+        </div>
+        {showWords && (
+          <label className="field">
+            <span>
+              Names and words SANSA should spell right, one per line. Write <code>wrong = Right</code> to fix a common mistake.
+            </span>
+            <textarea
+              className="small"
+              rows={4}
+              value={myWords}
+              onChange={(e) => setMyWords(e.target.value)}
+              placeholder={"SANSA\nsansa ai = SANSA AI\nChennai"}
+            />
+          </label>
+        )}
+
         {busy && (
           <p className="notice" role="status">
             {busyText}
@@ -391,14 +504,36 @@ export default function App() {
           rows={12}
         />
         {live.interim && <p className="interim">{live.interim}</p>}
+        {segments.length > 0 && <Timeline segments={segments} audioUrl={audioUrl} />}
         <div className="row">
           <button onClick={copy} disabled={!text}>
             {copied ? "Copied ✓" : "Copy"}
           </button>
-          <button onClick={download} disabled={!text}>
+          <button onClick={() => download(text, "txt")} disabled={!text}>
             Download .txt
           </button>
-          <button className="ghost" onClick={() => setText("")} disabled={!text}>
+          {segments.length > 0 && (
+            <>
+              <button onClick={() => download(toSrt(segments), "srt")} title="Subtitles for YouTube, Instagram, video editors">
+                Subtitles .srt
+              </button>
+              <button onClick={() => download(toVtt(segments), "vtt")} title="Subtitles for web video">
+                .vtt
+              </button>
+              <button onClick={() => download(toTimedText(segments), "txt")} title="Text with a time before each line">
+                Text with times
+              </button>
+            </>
+          )}
+          <button
+            className="ghost"
+            onClick={() => {
+              setText("");
+              setSegments([]);
+              setAudioUrl(null);
+            }}
+            disabled={!text && !segments.length}
+          >
             Clear
           </button>
         </div>

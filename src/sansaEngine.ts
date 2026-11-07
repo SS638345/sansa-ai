@@ -4,6 +4,7 @@
  */
 import { decodeTo16kMono } from "./localWhisper";
 import { splitOnSilence, toWav } from "./sarvam";
+import { pieceOffsets, type Segment, type Transcript } from "./transcript";
 
 export const SANSA_ENGINE_URL: string | undefined = import.meta.env.VITE_SANSA_ENGINE_URL || undefined;
 
@@ -23,12 +24,13 @@ export async function transcribeWithSansa(
   langId: string,
   baseUrl: string,
   onProgress: (done: number, total: number) => void,
-): Promise<string> {
+): Promise<Transcript> {
   const language = LANGS[langId];
   if (!language) throw new Error("The SANSA engine does not support this language.");
   const url = baseUrl.replace(/\/+$/, "") + "/transcribe";
   const pieces = splitOnSilence(await decodeTo16kMono(blob));
-  const texts: string[] = [];
+  const offsets = pieceOffsets(pieces);
+  const segments: Segment[] = [];
   for (let i = 0; i < pieces.length; i++) {
     onProgress(i, pieces.length);
     const form = new FormData();
@@ -51,8 +53,9 @@ export async function transcribeWithSansa(
       throw new SansaLanguageUnavailable(data.detail);
     }
     if (!res.ok) throw new Error(data.detail ?? `SANSA engine error (${res.status}).`);
-    texts.push((data.transcript ?? "").trim());
+    const text = (data.transcript ?? "").trim();
+    if (text) segments.push({ start: offsets[i], end: offsets[i] + pieces[i].length / 16000, text });
   }
   onProgress(pieces.length, pieces.length);
-  return texts.filter(Boolean).join(" ");
+  return { text: segments.map((s) => s.text).join(" "), segments };
 }

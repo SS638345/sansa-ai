@@ -1,5 +1,7 @@
 /**
- * Sarvam AI speech-to-text (saarika), trained for Indian languages.
+ * Sarvam AI speech-to-text (saaras:v4), trained for Indian languages.
+ * Output styles: same language (transcribe), English (translate), Tanglish-style
+ * romanized (translit) and mixed as spoken (codemix).
  * Sarvam's REST endpoint accepts up to 30 s per request, so audio is split
  * into ≤25 s pieces at the quietest point near each boundary and sent in order.
  *
@@ -8,10 +10,12 @@
  * own key, which is kept only in their browser's localStorage.
  */
 import { decodeTo16kMono } from "./localWhisper";
+import { pieceOffsets, type Segment, type Transcript } from "./transcript";
 
 const SARVAM_URL = "https://api.sarvam.ai/speech-to-text";
 export const SARVAM_PROXY_URL: string | undefined = import.meta.env.VITE_SARVAM_PROXY_URL || undefined;
-const MODEL = "saarika:v2.5";
+// Saarika is deprecated by Sarvam; saaras:v4 is the current model.
+const MODEL = "saaras:v4";
 const RATE = 16000;
 
 /** App language id -> Sarvam language code. Missing = not supported by Sarvam. */
@@ -81,11 +85,35 @@ export function toWav(samples: Float32Array): Blob {
   return new Blob([buf], { type: "audio/wav" });
 }
 
-async function sendPiece(wav: Blob, language: string, key: string | null): Promise<string> {
+/** How the text is written. Only Sarvam supports all four; see App.tsx for fallbacks. */
+export type OutputStyle = "native" | "english" | "roman" | "codemix";
+const SARVAM_MODE: Record<OutputStyle, string> = {
+  native: "transcribe",
+  english: "translate",
+  roman: "translit",
+  codemix: "codemix",
+};
+
+type SarvamTimestamps = {
+  words?: string[];
+  start_time_seconds?: number[];
+  end_time_seconds?: number[];
+};
+
+async function sendPiece(
+  wav: Blob,
+  language: string,
+  key: string | null,
+  style: OutputStyle,
+  keyterms: string[],
+): Promise<{ text: string; times: Segment[] }> {
   const form = new FormData();
   form.append("file", wav, "audio.wav");
   form.append("model", MODEL);
+  form.append("mode", SARVAM_MODE[style]);
   form.append("language_code", language);
+  form.append("with_timestamps", "true");
+  if (keyterms.length) form.append("keyterms", JSON.stringify(keyterms));
   let res: Response;
   try {
     res = await fetch(SARVAM_PROXY_URL ?? SARVAM_URL, {
@@ -98,13 +126,24 @@ async function sendPiece(wav: Blob, language: string, key: string | null): Promi
   }
   const data = (await res.json().catch(() => ({}))) as {
     transcript?: string;
+    timestamps?: SarvamTimestamps | null;
     error?: { message?: string };
     message?: string;
   };
   if (res.status === 401 || res.status === 403) throw new Error("Sarvam API key is wrong or expired. Check it in Settings.");
+  if (res.status === 402) throw new Error("Your Sarvam credits are used up. Add credits at dashboard.sarvam.ai or switch engine.");
   if (res.status === 429) throw new Error("Sarvam limit reached. Wait a minute or check your Sarvam credits.");
   if (!res.ok) throw new Error(data.error?.message ?? data.message ?? `Sarvam error (${res.status}).`);
-  return (data.transcript ?? "").trim();
+  const ts = data.timestamps;
+  const times: Segment[] = [];
+  if (ts?.words && ts.start_time_seconds && ts.end_time_seconds) {
+    ts.words.forEach((w, i) => {
+      const start = Number(ts.start_time_seconds![i]);
+      const end = Number(ts.end_time_seconds![i]);
+      if (w?.trim() && Number.isFinite(start) && Number.isFinite(end)) times.push({ start, end, text: w.trim() });
+    });
+  }
+  return { text: (data.transcript ?? "").trim(), times };
 }
 
 export async function transcribeWithSarvam(
@@ -112,16 +151,23 @@ export async function transcribeWithSarvam(
   langId: string,
   key: string | null,
   onProgress: (done: number, total: number) => void,
-): Promise<string> {
+  style: OutputStyle = "native",
+  keyterms: string[] = [],
+): Promise<Transcript> {
   const language = SARVAM_LANGS[langId];
   if (!language) throw new Error("Sarvam AI does not support this language. Use the free engine.");
   if (!SARVAM_PROXY_URL && !key) throw new Error("Add your Sarvam API key first.");
   const pieces = splitOnSilence(await decodeTo16kMono(blob));
-  const texts: string[] = [];
+  const offsets = pieceOffsets(pieces);
+  const segments: Segment[] = [];
   for (let i = 0; i < pieces.length; i++) {
     onProgress(i, pieces.length);
-    texts.push(await sendPiece(toWav(pieces[i]), language, key));
+    const { text, times } = await sendPiece(toWav(pieces[i]), language, key, style, keyterms);
+    if (!text) continue;
+    // Phrase times describe the spoken words; for translated/romanized text keep one timed piece.
+    if (times.length && style === "native") times.forEach((t) => segments.push({ start: offsets[i] + t.start, end: offsets[i] + t.end, text: t.text }));
+    else segments.push({ start: offsets[i], end: offsets[i] + pieces[i].length / RATE, text });
   }
   onProgress(pieces.length, pieces.length);
-  return texts.filter(Boolean).join(" ");
+  return { text: segments.map((s) => s.text).join(" "), segments };
 }
