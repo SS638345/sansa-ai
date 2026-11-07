@@ -106,3 +106,27 @@ textarea.small { font-size: 0.92rem; line-height: 1.5; padding: 10px 12px; }
 .lines button:disabled { cursor: default; }
 .lines button.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
 .lines time { color: var(--accent-2); font-variant-numeric: tabular-nums; font-size: 0.82rem; padding-top: 2px; }
+
+/* Batch 2: read aloud, video, library */
+.read { display: inline-flex; gap: 4px; }
+.read select { padding: 8px 10px; border-radius: 12px; font-size: 0.85rem; }
+.timeline video { width: 100%; max-height: 360px; border-radius: 12px; background: #000; }
+.timeline video::cue { font-size: 1rem; background: rgb(0 0 0 / 0.7); }
+.library { gap: 10px; }
+.library-toggle { display: flex; justify-content: space-between; align-items: center; width: 100%; border: 0; background: none; color: var(--text); cursor: pointer; padding: 0; text-align: left; font: inherit; }
+.library-toggle small { color: var(--muted); font-size: 0.8rem; margin-left: 6px; }
+.search { font: inherit; color: var(--text); padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--card-solid); width: 100%; }
+.items { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 360px; overflow-y: auto; }
+.items li { display: grid; grid-template-columns: 1fr auto auto; gap: 4px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 4px; }
+.items li.on { border-color: rgb(124 108 255 / 0.5); background: var(--accent-soft); }
+.item-main { display: grid; gap: 2px; text-align: left; border: 0; background: none; color: var(--text); cursor: pointer; padding: 8px 10px; min-width: 0; font: inherit; }
+.item-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-main small { color: var(--muted); font-size: 0.78rem; }
+.items .icon { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 10px; border-radius: 10px; font-size: 1rem; min-width: 40px; min-height: 40px; }
+.items .icon:hover { background: rgb(255 255 255 / 0.08); color: var(--text); }
+
+/* Keep everything inside phone width (long select options and tab labels used to push the page wider). */
+.page > *, .app > *, .card > *, .field > * { min-width: 0; }
+select { width: 100%; max-width: 100%; text-overflow: ellipsis; }
+.tabs button { min-width: 0; overflow-wrap: anywhere; }
+.read select { width: auto; }

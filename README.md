@@ -12,6 +12,10 @@ Simple voice to text converter. Pesunga, text aagidum. Tamil + English.
 - **Write the text as:** As spoken, English (translate), Tanglish (English letters) or Mixed. English works free on-device; Tanglish and Mixed need Sarvam AI for now.
 - **Timeline and subtitles:** after Upload/Record, every line gets a time. Play the audio, the current line lights up, tap a line to jump there. Download subtitles as `.srt` / `.vtt` or text with times.
 - **Clean mode:** removes fillers (umm, uh, ம்ம்) and tidies punctuation. **My words:** names SANSA should spell right (`wrong = Right` fixes a common mistake); also sent to Sarvam as key terms.
+- **Clean background noise:** optional RNNoise (open source, runs in the browser) removes fan, traffic and crowd noise before converting.
+- **Video to subtitles:** upload mp4/webm (up to 300 MB); the video plays in the timeline with the subtitles on it, and `.srt` / `.vtt` download.
+- **Read aloud:** plays the text with the voices built into the browser/phone (free).
+- **My library:** every conversion (text, times and, up to 60 MB, the audio/video) is saved in this browser only. Search, open, rename, delete.
 - Edit the text, copy it, or download it as `.txt`. The text is kept in your browser if you reload.
 
 ## Own free engine: SANSA engine
