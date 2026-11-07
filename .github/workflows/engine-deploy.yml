@@ -1,12 +1,9 @@
 name: Deploy SANSA engine
 
 # Creates/updates the free Hugging Face Space for the engine. Needs the repo secret HF_TOKEN
-# (a Hugging Face "Write" token). Runs by hand and whenever engine/ changes on main.
+# (a Hugging Face "Write" token). Runs by hand only: Docker Spaces on cpu-basic now need HF PRO.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: ["engine/**"]
 
 permissions:
   contents: read
@@ -29,7 +26,9 @@ jobs:
       - name: Create or update the Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: python3 engine/deploy_space.py | tee /tmp/out.txt
+        run: |
+          set -o pipefail
+          python3 engine/deploy_space.py | tee /tmp/out.txt
       - name: Wait until the engine answers
         run: |
           URL=$(tail -1 /tmp/out.txt)

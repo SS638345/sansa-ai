@@ -1,0 +1,55 @@
+name: Build web model
+
+# Converts a Whisper fine-tune to browser (transformers.js) ONNX files and uploads it as a free
+# model repo on the HF_TOKEN owner's Hugging Face account, then tests it on a known Tamil clip.
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        default: vasista22/whisper-tamil-medium
+      base:
+        default: openai/whisper-medium
+      name:
+        default: whisper-tamil-medium-web
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+      - name: Install
+        run: |
+          pip install -q --index-url https://download.pytorch.org/whl/cpu torch==2.5.1
+          pip install -q transformers==4.46.3 "optimum[exporters]==1.23.3" onnx==1.17.0 onnxruntime==1.20.1 \
+            onnxconverter-common==1.14.0 "numpy<2" huggingface_hub gTTS
+      - name: Export and upload
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python3 webmodel/export.py "${{ inputs.source }}" "${{ inputs.base }}" "${{ inputs.name }}"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Test in transformers.js
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          npm ci
+          sudo apt-get install -y -qq ffmpeg >/dev/null
+          python3 -c "from gtts import gTTS; gTTS('இன்று காலை நான் சந்தைக்கு சென்று காய்கறிகள் வாங்கினேன். மழை பெய்ததால் கொஞ்சம் தாமதமாக வீட்டுக்கு வந்தேன்.', lang='ta').save('/tmp/known.mp3')"
+          ffmpeg -v quiet -i /tmp/known.mp3 -ac 1 -ar 16000 -f f32le /tmp/known.f32
+          USER=$(python3 -c "import os; from huggingface_hub import HfApi; print(HfApi(token=os.environ['HF_TOKEN']).whoami()['name'])")
+          REPO="$USER/${{ inputs.name }}"
+          echo "Model: https://huggingface.co/$REPO"
+          node webmodel/test.mjs "$REPO" /tmp/known.f32 fp32 q8
+          node webmodel/test.mjs "$REPO" /tmp/known.f32 q8 q8
+          node webmodel/test.mjs "$REPO" /tmp/known.f32 fp16 q4 || true
