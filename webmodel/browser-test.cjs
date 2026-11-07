@@ -8,6 +8,8 @@ const { chromium } = require("playwright");
   const page = await browser.newPage();
   page.on("pageerror", (e) => console.log("pageerror:", e.message));
   page.on("console", (m) => m.type() === "error" && console.log("console:", m.text()));
+  page.on("response", (r) => r.status() >= 300 && console.log("http", r.status(), r.request().method(), r.url()));
+  page.on("requestfailed", (r) => console.log("failed", r.method(), r.url(), r.failure()?.errorText));
   await page.goto("http://localhost:4173/");
   await page.getByRole("tab", { name: /Upload audio/ }).click();
   const model = await page.locator('label.field:has-text("Speech model") select').inputValue();
