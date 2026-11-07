@@ -30,9 +30,11 @@ jobs:
         run: git clone --depth 1 --branch 3.0.2 https://github.com/huggingface/transformers.js /tmp/tjs
       - name: Install
         run: |
+          # NVIDIA's index is unreachable from runners; graphsurgeon is on PyPI too.
+          sed -i '/ngc.nvidia/d; s/onnx_graphsurgeon==0.3.27/onnx_graphsurgeon==0.5.2/' /tmp/tjs/scripts/requirements.txt
           cat /tmp/tjs/scripts/requirements.txt
-          pip install -q --extra-index-url https://download.pytorch.org/whl/cpu -r /tmp/tjs/scripts/requirements.txt \
-            huggingface_hub gTTS
+          pip install -q --extra-index-url https://download.pytorch.org/whl/cpu torch==2.5.1+cpu \
+            -r /tmp/tjs/scripts/requirements.txt huggingface_hub gTTS
           python3 -c "import torch, transformers; print('torch', torch.__version__, 'transformers', transformers.__version__)"
       - name: Export and upload
         working-directory: /tmp/tjs
