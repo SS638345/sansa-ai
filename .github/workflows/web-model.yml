@@ -68,12 +68,27 @@ jobs:
           sudo apt-get install -y -qq ffmpeg >/dev/null
           pip install -q gTTS
           python3 -c "from gtts import gTTS; gTTS('இன்று காலை நான் சந்தைக்கு சென்று காய்கறிகள் வாங்கினேன். மழை பெய்ததால் கொஞ்சம் தாமதமாக வீட்டுக்கு வந்தேன்.', lang='ta').save('/tmp/known.mp3')"
+      - name: Mirror the model files the app will load
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from huggingface_hub import HfApi, snapshot_download
+          user = HfApi(token=os.environ["HF_TOKEN"]).whoami()["name"]
+          for repo, onnx in [(f"{user}/${{ inputs.name }}", ["onnx/encoder_model_quantized.onnx", "onnx/decoder_model_merged_quantized.onnx"]),
+                             ("onnx-community/whisper-base", ["onnx/encoder_model.onnx", "onnx/decoder_model_merged_quantized.onnx"])]:
+              snapshot_download(repo, local_dir=f"/tmp/mirror/{repo}", allow_patterns=["*.json"] + onnx)
+          PY
+          du -sh /tmp/mirror/*/*
       - name: Upload a Tamil clip in the real app
+        env:
+          MIRROR: /tmp/mirror
         run: |
           (npx vite preview --port 4173 &) && sleep 5
           E="இன்று காலை நான் சந்தைக்கு சென்று காய்கறிகள் வாங்கினேன் மழை பெய்ததால் கொஞ்சம் தாமதமாக வீட்டுக்கு வந்தேன்"
           echo "--- control: the general base model ---"
-          node webmodel/browser-test.cjs /tmp/known.mp3 "$E" onnx-community/whisper-base || true
+          node webmodel/browser-test.cjs /tmp/known.mp3 "$E" onnx-community/whisper-base 2>&1 | tail -20 || true
           echo "--- default Tamil model ---"
           node webmodel/browser-test.cjs /tmp/known.mp3 "$E"
 

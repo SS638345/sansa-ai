@@ -11,16 +11,17 @@ const { chromium } = require("playwright");
   page.on("response", (r) => r.status() >= 300 && console.log("http", r.status(), r.request().method(), r.url()));
   page.on("requestfailed", (r) => console.log("failed", r.method(), r.url(), r.failure()?.errorText));
   // Hugging Face answers 405 to headless Chromium from CI runners (even for onnx-community
-  // models), while plain requests from the same machine work. Fetch model files outside the
-  // page and hand them back, so the app code itself still runs unchanged.
-  await page.route(/https:\/\/([a-z0-9-]+\.)*(huggingface\.co|hf\.co)\//, async (route) => {
-    try {
-      const res = await route.fetch({ maxRedirects: 10, timeout: 15 * 60 * 1000 });
-      if (res.status() >= 400) console.log("hf", res.status(), route.request().url());
-      await route.fulfill({ response: res, headers: { ...res.headers(), "access-control-allow-origin": "*" } });
-    } catch (e) {
-      console.log("route error", route.request().url(), String(e).slice(0, 200));
-      await route.abort().catch(() => {});
+  // models), and Playwright can't pass >512 MB bodies through route.fetch. So the workflow
+  // downloads the model repos to MIRROR first and we serve those files to the page.
+  const mirror = process.env.MIRROR;
+  await page.route(/https:\/\/huggingface\.co\/.+\/resolve\/main\//, async (route) => {
+    const m = route.request().url().match(/huggingface\.co\/(.+?)\/resolve\/main\/([^?]+)/);
+    const file = m && require("node:path").join(mirror, m[1], decodeURIComponent(m[2]));
+    if (file && require("node:fs").existsSync(file)) {
+      await route.fulfill({ path: file, headers: { "access-control-allow-origin": "*" } });
+    } else {
+      console.log("not mirrored (404):", route.request().url());
+      await route.fulfill({ status: 404, body: "", headers: { "access-control-allow-origin": "*" } });
     }
   });
   await page.goto("http://localhost:4173/");
