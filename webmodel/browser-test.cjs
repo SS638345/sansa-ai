@@ -3,7 +3,7 @@
 const { chromium } = require("playwright");
 
 (async () => {
-  const [clip, expected] = process.argv.slice(2);
+  const [clip, expected, pick] = process.argv.slice(2);
   const browser = await chromium.launch();
   const page = await browser.newPage();
   page.on("pageerror", (e) => console.log("pageerror:", e.message));
@@ -12,7 +12,9 @@ const { chromium } = require("playwright");
   page.on("requestfailed", (r) => console.log("failed", r.method(), r.url(), r.failure()?.errorText));
   await page.goto("http://localhost:4173/");
   await page.getByRole("tab", { name: /Upload audio/ }).click();
-  const model = await page.locator('label.field:has-text("Speech model") select').inputValue();
+  const select = page.locator('label.field:has-text("Speech model") select');
+  if (pick) await select.selectOption(pick);
+  const model = await select.inputValue();
   console.log("model:", model);
   const t0 = Date.now();
   await page.locator("input[type=file]").setInputFiles(clip);

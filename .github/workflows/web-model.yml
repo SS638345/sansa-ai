@@ -71,7 +71,11 @@ jobs:
       - name: Upload a Tamil clip in the real app
         run: |
           (npx vite preview --port 4173 &) && sleep 5
-          node webmodel/browser-test.cjs /tmp/known.mp3 "இன்று காலை நான் சந்தைக்கு சென்று காய்கறிகள் வாங்கினேன் மழை பெய்ததால் கொஞ்சம் தாமதமாக வீட்டுக்கு வந்தேன்"
+          E="இன்று காலை நான் சந்தைக்கு சென்று காய்கறிகள் வாங்கினேன் மழை பெய்ததால் கொஞ்சம் தாமதமாக வீட்டுக்கு வந்தேன்"
+          echo "--- control: the general base model ---"
+          node webmodel/browser-test.cjs /tmp/known.mp3 "$E" onnx-community/whisper-base || true
+          echo "--- default Tamil model ---"
+          node webmodel/browser-test.cjs /tmp/known.mp3 "$E"
 
   build:
     if: ${{ !inputs.browser_test_only }}
