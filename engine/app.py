@@ -68,7 +68,11 @@ def get_whisper(lang: str):
     model.generation_config = GenerationConfig.from_pretrained(base_id)
     loaded[lang] = (model, AutoProcessor.from_pretrained(model_id))
     while len(loaded) > MAX_LOADED:
-        old, _ = loaded.popitem(last=False)
+        # Evict the least recently used model, but keep the preloaded (main) languages.
+        old = next((k for k in loaded if k not in PRELOAD and k != lang), None)
+        if old is None:
+            break
+        del loaded[old]
         log.info("Unloaded %s", old)
     return loaded[lang]
 
