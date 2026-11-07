@@ -1,7 +1,7 @@
 {
-  "name": "SANSA Voice to Text",
-  "short_name": "SANSA Voice",
-  "description": "Free voice to text for Tamil, Hindi and other Indian languages.",
+  "name": "Sansa Voice",
+  "short_name": "Sansa Voice",
+  "description": "Voice to text in Tamil, Tanglish, English and 15+ Indian languages.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

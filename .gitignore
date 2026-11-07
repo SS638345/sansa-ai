@@ -4,3 +4,8 @@ dist
 *.log
 .DS_Store
 *.tsbuildinfo
+
+# private customer recordings, transcripts and training bundles: never commit
+*.m4a
+*.docx
+*.zip

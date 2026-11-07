@@ -8,7 +8,7 @@ import { SANSA_ENGINE_URL, SansaLanguageUnavailable, sansaSupports, transcribeWi
 import { keyTerms, parseMyWords, polish, toSrt, toTimedText, toVtt, type Segment, type Transcript } from "./transcript";
 import { Timeline, type MediaKind } from "./Timeline";
 import { denoiseToWav } from "./denoise";
-import { deleteItem, listItems, renameItem, saveItem, titleFrom, type LibraryItem } from "./library";
+import { deleteItem, listItems, renameItem, saveItem, titleFrom, type LibraryItem } from "./libraryStore";
 import { readAloudSupported, speak, voiceFor, voicesReady } from "./readAloud";
 import { Library } from "./Library";
 
@@ -665,7 +665,14 @@ export default function App() {
 
       <footer className="foot">
         <span>© {new Date().getFullYear()} SANSA AI</span>
-        <a href="https://sansaai.in" target="_blank" rel="noreferrer">sansaai.in</a>
+        <nav className="foot-links" aria-label="Legal">
+          <a href="./about.html">About</a>
+          <a href="./contact.html">Contact</a>
+          <a href="./privacy.html">Privacy</a>
+          <a href="./terms.html">Terms</a>
+          <a href="./refund.html">Refund</a>
+          <a href="https://app.sansaai.in">SANSA AI app</a>
+        </nav>
       </footer>
     </div>
   );
