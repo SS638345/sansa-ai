@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Contact — SANSA AI</title>
+  <meta name="description" content="Contact SANSA AI — Get in touch with our team for support, sales, or partnerships.">
+  <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box}body{margin:0;font-family:'Inter',system-ui,sans-serif;background:#fff;color:#0F172A}
+    .nav{display:flex;align-items:center;gap:20px;padding:12px 24px;border-bottom:1px solid #E2E8F0;position:sticky;top:0;background:#fff;z-index:100}
+    .nav .logo{display:flex;align-items:center;gap:8px;text-decoration:none;font-weight:800;font-size:18px;color:#0F172A}
+    .nav .logo .g{background:linear-gradient(90deg,#FF6B00,#7C3AED,#2563EB);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .nav nav a{padding:8px 14px;border-radius:8px;text-decoration:none;color:#334155;font-size:14px;font-weight:500}
+    .nav nav a:hover,.nav nav a.on{background:#F1F5F9;color:#0F172A}
+    .hero{padding:64px 24px 32px;text-align:center}
+    .hero h1{font-size:clamp(28px,4vw,42px);font-weight:800;margin:0 0 8px}
+    .hero h1 .grad{background:linear-gradient(90deg,#FF6B00,#7C3AED,#2563EB);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .hero p{color:#64748B;font-size:16px}
+    .contact-wrap{max-width:900px;margin:0 auto;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:40px}
+    @media(max-width:640px){.contact-wrap{grid-template-columns:1fr}}
+    .contact-form{display:flex;flex-direction:column;gap:14px}
+    .field{display:flex;flex-direction:column;gap:4px}
+    .field label{font-size:13px;font-weight:600;color:#334155}
+    .field input,.field textarea,.field select{padding:10px 14px;border:1px solid #E2E8F0;border-radius:8px;font-size:14px;font-family:inherit;color:#0F172A;transition:border .15s}
+    .field input:focus,.field textarea:focus{outline:none;border-color:#2563EB}
+    .field textarea{resize:vertical;min-height:120px}
+    .submit-btn{padding:12px 24px;background:#2563EB;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s}
+    .submit-btn:hover{background:#1D4ED8}
+    .submit-btn:disabled{opacity:.5;cursor:not-allowed}
+    .msg{padding:10px 14px;border-radius:8px;font-size:13px;font-weight:500;display:none}
+    .msg.success{display:block;background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0}
+    .msg.error{display:block;background:#FEF2F2;color:#DC2626;border:1px solid #FECACA}
+    .contact-info h3{font-size:20px;font-weight:700;margin:0 0 16px}
+    .contact-info p{color:#334155;font-size:14px;line-height:1.7;margin:0 0 20px}
+    .info-card{padding:20px;border:1px solid #E2E8F0;border-radius:12px;margin-bottom:12px}
+    .info-card h4{font-size:14px;font-weight:700;margin:0 0 4px}
+    .info-card p{color:#64748B;font-size:13px;margin:0}
+    .footer{background:#0F172A;color:#94A3B8;padding:40px 24px 20px;margin-top:64px;text-align:center;font-size:13px}
+    .footer .grad{background:linear-gradient(90deg,#FF6B00,#7C3AED,#2563EB);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700}
+  </style>
+  <link rel="canonical" href="https://sansaai.in/contact">
+</head>
+<body>
+  <div class="nav">
+    <a href="/" class="logo"><img src="/brand/sansa-icon.svg" width="28" height="28" style="border-radius:7px" alt="">SANSA <span class="g">AI</span></a>
+    <nav><a href="/">Products</a><a href="/">Pricing</a><a href="/">Blog</a><a href="/contact.html" class="on">Contact</a></nav>
+  </div>
+  <div data-sansa-page-auto class="cms-page-mount" aria-live="polite"></div>
+  <section class="hero"><h1 data-sansa-setting="contact.page_title">Contact <span class="grad">SANSA AI</span></h1><p data-sansa-setting="contact.page_subtitle">We'd love to hear from you</p></section>
+  <div class="contact-wrap">
+    <form class="contact-form" id="contactForm">
+      <div class="msg" id="formMsg"></div>
+      <div class="field"><label>Name *</label><input type="text" id="cName" required></div>
+      <div class="field"><label>Email *</label><input type="email" id="cEmail" required></div>
+      <div class="field"><label>Category</label><select id="cCategory"><option value="general">General Inquiry</option><option value="sales">Sales</option><option value="support">Support</option><option value="partnership">Partnership</option><option value="enterprise">Enterprise</option></select></div>
+      <div class="field"><label>Subject</label><input type="text" id="cSubject" placeholder="How can we help?"></div>
+      <div class="field"><label>Message *</label><textarea id="cMessage" required placeholder="Tell us more..."></textarea></div>
+      <button type="submit" class="submit-btn" id="submitBtn">Send Message</button>
+    </form>
+    <div class="contact-info">
+      <h3>Get in touch</h3>
+      <p>Whether you have a question about features, pricing, need a demo, or anything else — our team is ready to answer.</p>
+      <div class="info-card"><h4>📧 Email</h4><p data-sansa-setting="contact.info_email">hello@sansaai.in</p></div>
+      <div class="info-card"><h4>💬 Live Chat</h4><p>Available on our platform 24/7</p></div>
+      <div class="info-card"><h4>🏢 Enterprise</h4><p>support@sansaai.in</p></div>
+      <div class="info-card"><h4>📍 Location</h4><p>Chennai, Tamil Nadu, India</p></div>
+    </div>
+  </div>
+  <footer class="footer"><span data-sansa-setting="footer.copyright">© 2026 <span class="grad">SANSA AI</span> by Sansaa. All rights reserved.</span></footer>
+  <script>
+  (function(){
+    const API=(window.__SANSA_CONFIG__||{}).apiBaseUrl||'';
+    document.getElementById('contactForm').onsubmit=async(e)=>{
+      e.preventDefault();
+      const btn=document.getElementById('submitBtn');
+      const msg=document.getElementById('formMsg');
+      btn.disabled=true;btn.textContent='Sending...';
+      try{
+        const r=await fetch(API+'/api/contact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+          name:document.getElementById('cName').value,
+          email:document.getElementById('cEmail').value,
+          category:document.getElementById('cCategory').value,
+          subject:document.getElementById('cSubject').value,
+          message:document.getElementById('cMessage').value
+        })});
+        const d=await r.json();
+        if(d.ok){msg.className='msg success';msg.textContent='Message sent successfully! We\'ll get back to you soon.';e.target.reset();}
+        else{msg.className='msg error';msg.textContent=d.error||'Failed to send';}
+      }catch(err){msg.className='msg error';msg.textContent='Network error. Please try again.';}
+      btn.disabled=false;btn.textContent='Send Message';
+    };
+  })();
+  </script>
+</body>
+</html>

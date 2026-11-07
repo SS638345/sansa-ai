@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { LibraryItem } from "./library";
+import type { LibraryItem } from "./libraryStore";
 
 /** Saved conversions on this device: search, open, rename, delete. */
 export function Library({
