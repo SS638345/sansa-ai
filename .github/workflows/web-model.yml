@@ -15,6 +15,10 @@ on:
         description: Skip the export; only run the app in Chromium with the uploaded model
         type: boolean
         default: false
+      model_artifact:
+        description: Only upload the browser model files as a workflow artifact (for offline tests)
+        type: boolean
+        default: false
       long_only:
         description: Stop after the long-clip test
         type: boolean
@@ -24,6 +28,19 @@ permissions:
   contents: read
 
 jobs:
+  artifact:
+    if: ${{ inputs.model_artifact }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          pip install -q huggingface_hub
+          python3 -c "from huggingface_hub import snapshot_download as s; s('santhosh63/${{ inputs.name }}', local_dir='/tmp/m', allow_patterns=['*.json','onnx/encoder_model_quantized.onnx','onnx/decoder_model_merged_quantized.onnx'])"
+          du -sh /tmp/m
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tamil-web-model
+          path: /tmp/m
+          retention-days: 2
   browser:
     if: inputs.browser_test_only
     runs-on: ubuntu-latest
@@ -128,7 +145,7 @@ jobs:
           exit $fail
 
   build:
-    if: ${{ !inputs.browser_test_only }}
+    if: ${{ !inputs.browser_test_only && !inputs.model_artifact }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
