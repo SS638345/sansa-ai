@@ -11,12 +11,89 @@ on:
         default: openai/whisper-medium
       name:
         default: whisper-tamil-medium-web
+      browser_test_only:
+        description: Skip the export; only run the app in Chromium with the uploaded model
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
+  browser:
+    if: inputs.browser_test_only
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci && npm run build
+      - name: Make sure the model is public (browsers have no token)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install -q huggingface_hub
+          python3 - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          repo = f"{api.whoami()['name']}/${{ inputs.name }}"
+          info = api.model_info(repo)
+          print("before: private", info.private, "gated", info.gated)
+          if info.private:
+              api.update_repo_visibility(repo, private=False)
+          if info.gated:
+              api.update_repo_settings(repo, gated=False)
+          info = api.model_info(repo)
+          print("after: private", info.private, "gated", info.gated)
+          PY
+          curl -s -o /dev/null -w "anonymous config.json: %{http_code}\n" -L "https://huggingface.co/$(python3 -c "import os; from huggingface_hub import HfApi; print(HfApi(token=os.environ['HF_TOKEN']).whoami()['name'])")/${{ inputs.name }}/resolve/main/config.json"
+      - name: Compare how Hugging Face answers browsers
+        run: |
+          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/131.0.0.0 Safari/537.36"
+          for repo in santhosh63/${{ inputs.name }} onnx-community/whisper-base; do
+            u="https://huggingface.co/$repo/resolve/main/config.json"
+            echo "$repo plain: $(curl -s -o /dev/null -w '%{http_code}' -L "$u")"
+            echo "$repo origin: $(curl -s -o /dev/null -w '%{http_code}' -L -H 'Origin: http://localhost:4173' "$u")"
+            echo "$repo headless UA: $(curl -s -o /dev/null -w '%{http_code}' -L -A "$UA" "$u")"
+            curl -s -D - -o /tmp/body -A "$UA" -H 'Origin: http://localhost:4173' "$u" | head -20; head -c 300 /tmp/body; echo
+          done
+      - name: Install Chromium and test audio
+        run: |
+          npm install --no-save playwright@1.49.1
+          npx playwright install --with-deps chromium
+          sudo apt-get install -y -qq ffmpeg >/dev/null
+          pip install -q gTTS
+          python3 -c "from gtts import gTTS; gTTS('இன்று காலை நான் சந்தைக்கு சென்று காய்கறிகள் வாங்கினேன். மழை பெய்ததால் கொஞ்சம் தாமதமாக வீட்டுக்கு வந்தேன்.', lang='ta').save('/tmp/known.mp3')"
+      - name: Mirror the model files the app will load
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from huggingface_hub import HfApi, snapshot_download
+          user = HfApi(token=os.environ["HF_TOKEN"]).whoami()["name"]
+          for repo, onnx in [(f"{user}/${{ inputs.name }}", ["onnx/encoder_model_quantized.onnx", "onnx/decoder_model_merged_quantized.onnx"]),
+                             ("onnx-community/whisper-base", ["onnx/encoder_model.onnx", "onnx/encoder_model_quantized.onnx", "onnx/decoder_model_merged_quantized.onnx"])]:
+              snapshot_download(repo, local_dir=f"/tmp/mirror/{repo}", allow_patterns=["*.json"] + onnx)
+          PY
+          du -sh /tmp/mirror/*/*
+      - name: Upload a Tamil clip in the real app
+        env:
+          MIRROR: /tmp/mirror
+        run: |
+          (npx vite preview --port 4173 &) && sleep 5
+          E="இன்று காலை நான் சந்தைக்கு சென்று காய்கறிகள் வாங்கினேன் மழை பெய்ததால் கொஞ்சம் தாமதமாக வீட்டுக்கு வந்தேன்"
+          echo "--- control: the general base model ---"
+          node webmodel/browser-test.cjs /tmp/known.mp3 "$E" onnx-community/whisper-base 2>&1 | tail -20 || true
+          echo "--- default Tamil model ---"
+          node webmodel/browser-test.cjs /tmp/known.mp3 "$E"
+
   build:
+    if: ${{ !inputs.browser_test_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -26,15 +103,24 @@ jobs:
           python-version: "3.11"
       - name: Free disk space
         run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+      - name: Get transformers.js conversion scripts
+        run: git clone --depth 1 --branch 3.0.2 https://github.com/huggingface/transformers.js /tmp/tjs
       - name: Install
         run: |
-          pip install -q --index-url https://download.pytorch.org/whl/cpu torch==2.5.1
-          pip install -q transformers==4.46.3 "optimum[exporters]==1.23.3" onnx==1.17.0 onnxruntime==1.20.1 \
-            onnxconverter-common==1.14.0 "numpy<2" huggingface_hub gTTS
+          # NVIDIA's index is unreachable from runners; graphsurgeon is on PyPI too.
+          sed -i '/ngc.nvidia/d; s/onnx_graphsurgeon==0.3.27/onnx_graphsurgeon==0.5.2/' /tmp/tjs/scripts/requirements.txt
+          # Newer transformers export a decoder transformers.js cannot run (cache_position input in
+          # >= 4.43, a broken positions Slice in 4.42). 4.38 matches the official web Whisper exports.
+          sed -i 's/^transformers\[torch\]==.*/transformers[torch]==4.38.2/' /tmp/tjs/scripts/requirements.txt
+          cat /tmp/tjs/scripts/requirements.txt
+          pip install -q --extra-index-url https://download.pytorch.org/whl/cpu torch==2.2.2+cpu \
+            -r /tmp/tjs/scripts/requirements.txt huggingface_hub gTTS "numpy<2"
+          python3 -c "import torch, transformers; print('torch', torch.__version__, 'transformers', transformers.__version__)"
       - name: Export and upload
+        working-directory: /tmp/tjs
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: python3 webmodel/export.py "${{ inputs.source }}" "${{ inputs.base }}" "${{ inputs.name }}"
+        run: python3 "$GITHUB_WORKSPACE/webmodel/export.py" "${{ inputs.source }}" "${{ inputs.base }}" "${{ inputs.name }}"
       - uses: actions/setup-node@v4
         with:
           node-version: 20

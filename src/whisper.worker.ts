@@ -17,29 +17,56 @@ const post = (m: WorkerMessage) => (self as unknown as DedicatedWorkerGlobalScop
 
 let current: { model: string; asr: Promise<AutomaticSpeechRecognitionPipeline> } | null = null;
 
-function load(model: string) {
+/** WebGPU if usable here, and whether it can run fp16 (many GPUs/browsers can't). */
+let gpuInfo: Promise<{ gpu: boolean; f16: boolean }> | null = null;
+function detectGpu() {
+  gpuInfo ??= (async () => {
+    try {
+      const gpu = (navigator as Navigator & { gpu?: { requestAdapter(): Promise<{ features: Set<string> } | null> } }).gpu;
+      const adapter = gpu ? await gpu.requestAdapter() : null;
+      return { gpu: Boolean(adapter), f16: Boolean(adapter?.features.has("shader-f16")) };
+    } catch {
+      return { gpu: false, f16: false };
+    }
+  })();
+  return gpuInfo;
+}
+
+async function load(model: string) {
   if (current?.model === model) return current.asr;
   const files = new Map<string, { loaded: number; total: number }>();
-  const hasGpu = typeof navigator !== "undefined" && "gpu" in navigator;
-  const asr = pipeline("automatic-speech-recognition", model, {
-    device: hasGpu ? "webgpu" : "wasm",
-    // Full-precision encoder: quantizing it costs a lot of accuracy on Indian languages.
-    dtype: hasGpu
-      ? { encoder_model: model.includes("large") ? "fp16" : "fp32", decoder_model_merged: "q4" }
-      : { encoder_model: model.includes("large") ? "q8" : "fp32", decoder_model_merged: "q8" },
-    progress_callback: (p: { status: string; file?: string; loaded?: number; total?: number }) => {
-      if (p.status === "progress" && p.file) {
-        files.set(p.file, { loaded: p.loaded ?? 0, total: p.total ?? 0 });
-        let loaded = 0;
-        let total = 0;
-        files.forEach((f) => {
-          loaded += f.loaded;
-          total += f.total;
-        });
-        post({ type: "progress", loaded, total });
-      }
-    },
-  }) as Promise<AutomaticSpeechRecognitionPipeline>;
+  const { gpu, f16 } = await detectGpu();
+  const big = model.includes("large") || model.includes("tamil-medium");
+  // Big models need fp16 on the GPU; without fp16 support they run on the CPU (WASM) in q8.
+  const useGpu = gpu && (f16 || !big);
+  const progress_callback = (p: { status: string; file?: string; loaded?: number; total?: number }) => {
+    if (p.status === "progress" && p.file) {
+      files.set(p.file, { loaded: p.loaded ?? 0, total: p.total ?? 0 });
+      let loaded = 0;
+      let total = 0;
+      files.forEach((f) => {
+        loaded += f.loaded;
+        total += f.total;
+      });
+      post({ type: "progress", loaded, total });
+    }
+  };
+  const open = (onGpu: boolean) =>
+    pipeline("automatic-speech-recognition", model, {
+      device: onGpu ? "webgpu" : "wasm",
+      // Full-precision encoder for small models: quantizing it costs accuracy on Indian languages.
+      // The Tamil medium export matched a known Tamil sentence word-for-word with fp16/q4 and q8/q8.
+      dtype: onGpu
+        ? { encoder_model: big ? "fp16" : "fp32", decoder_model_merged: "q4" }
+        : { encoder_model: big ? "q8" : "fp32", decoder_model_merged: "q8" },
+      progress_callback,
+    }) as Promise<AutomaticSpeechRecognitionPipeline>;
+  // If the GPU path fails to start (driver or browser quirks), fall back to the CPU.
+  const asr = open(useGpu).catch((e) => {
+    if (!useGpu) throw e;
+    files.clear();
+    return open(false);
+  });
   asr.catch(() => {
     current = null;
   });
