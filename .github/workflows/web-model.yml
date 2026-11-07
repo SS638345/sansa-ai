@@ -77,7 +77,7 @@ jobs:
           from huggingface_hub import HfApi, snapshot_download
           user = HfApi(token=os.environ["HF_TOKEN"]).whoami()["name"]
           for repo, onnx in [(f"{user}/${{ inputs.name }}", ["onnx/encoder_model_quantized.onnx", "onnx/decoder_model_merged_quantized.onnx"]),
-                             ("onnx-community/whisper-base", ["onnx/encoder_model.onnx", "onnx/decoder_model_merged_quantized.onnx"])]:
+                             ("onnx-community/whisper-base", ["onnx/encoder_model.onnx", "onnx/encoder_model_quantized.onnx", "onnx/decoder_model_merged_quantized.onnx"])]:
               snapshot_download(repo, local_dir=f"/tmp/mirror/{repo}", allow_patterns=["*.json"] + onnx)
           PY
           du -sh /tmp/mirror/*/*
