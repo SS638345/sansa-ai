@@ -13,6 +13,7 @@ import { Library } from "./Library";
 import { Agents, Api, Cleanup, Clone, Cta, Faq, Hero, HomeProvider, HowItWorks, Products, SiteFooter, SiteHeader, Voices, useTheme } from "./Landing";
 import { t, tr, useUi } from "./i18n";
 import { tanglishToTamil } from "./translit";
+import { ENGINE_UPLOAD_MB, LOCAL_UPLOAD_MB, VIDEO_UPLOAD_MB } from "./limits";
 import { printAsPdf, shareToWhatsApp, toDocx } from "./exportDoc";
 import { getStatus, transcribe, type Status } from "./api";
 
@@ -311,7 +312,7 @@ export default function App() {
     if (!file) return;
     const isVideo = file.type.startsWith("video/") || /\.(mp4|mov|mkv|m4v)$/i.test(file.name);
     // Our own Tamil engine takes long recordings (up to about an hour); on-device models stay at 25 MB.
-    const maxMb = isVideo ? 300 : useSansa ? 200 : 25;
+    const maxMb = isVideo ? VIDEO_UPLOAD_MB : useSansa ? ENGINE_UPLOAD_MB : LOCAL_UPLOAD_MB;
     if (file.size > maxMb * 1024 * 1024) {
       setError(t(`File is too big. Max ${maxMb} MB for ${isVideo ? "video" : "audio"}.`, `File மிகப் பெரியது. ${isVideo ? "Video" : "Audio"}-க்கு அதிகபட்சம் ${maxMb} MB.`));
       return;
