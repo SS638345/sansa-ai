@@ -1,3 +1,4 @@
+import { tamilToTanglish } from "./translit";
 import { toCodemix } from "./codemix";
 
 /**
@@ -147,12 +148,14 @@ export function applyMyWords(text: string, rules: WordRule[]): string {
 }
 
 /** Clean mode and My words, applied the same way to the text and to every timed piece. */
-export function polish(t: Transcript, opts: { clean: boolean; rules: WordRule[]; codemix?: boolean }): Transcript {
+export function polish(t: Transcript, opts: { clean: boolean; rules: WordRule[]; codemix?: boolean; tanglish?: boolean }): Transcript {
   const fix = (s: string) => {
     // Mixed first, so a My words rule can still override what it picks.
     const mixed = opts.codemix ? toCodemix(s) : s;
     const fixed = opts.rules.length ? applyMyWords(mixed, opts.rules) : mixed;
-    return opts.clean ? cleanText(fixed) : fixed.trim();
+    const done = opts.clean ? cleanText(fixed) : fixed.trim();
+    // Tanglish last, after My words, so the visitor's own spellings are romanised too
+    return opts.tanglish ? tamilToTanglish(done) : done;
   };
   const segments = t.segments.map((s) => ({ ...s, text: fix(s.text) })).filter((s) => s.text);
   return { text: segments.length ? joinSegments(segments) : fix(t.text), segments };

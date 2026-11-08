@@ -12,6 +12,7 @@ import { readAloudSupported, speak, voiceFor, voicesReady } from "./readAloud";
 import { Library } from "./Library";
 import { Agents, Api, Cleanup, Clone, Cta, Faq, Hero, HomeProvider, HowItWorks, Products, SiteFooter, SiteHeader, Voices, useTheme } from "./Landing";
 import { t, tr, useUi } from "./i18n";
+import { tanglishToTamil } from "./translit";
 import { getStatus, transcribe, type Status } from "./api";
 
 const STYLES: { id: OutputStyle; label: string; note: string }[] = [
@@ -173,7 +174,7 @@ export default function App() {
   useEffect(() => () => stopSpeaking?.(), [stopSpeaking]);
 
   const rules = parseMyWords(myWords);
-  const finish = (t: Transcript) => polish(t, { clean, rules, codemix: localCodemix });
+  const finish = (t: Transcript) => polish(t, { clean, rules, codemix: localCodemix, tanglish: localTanglish });
 
   const append = (chunk: string) => {
     if (!chunk) return;
@@ -208,7 +209,8 @@ export default function App() {
   // free translate, Mixed puts English words back in English on this device (src/codemix.ts),
   // and Tanglish is not available yet, so text stays as spoken.
   const localCodemix = style === "codemix" && !useSarvam;
-  const styleNeedsSarvam = style === "roman" && !useSarvam;
+  // Tanglish: written on this device from the Tamil text (src/translit.ts), no API needed
+  const localTanglish = style === "roman" && !useSarvam;
   const translateLocally = style === "english" && !useSarvam;
 
   const runTranscribe = async (audio: Blob, name?: string) => {
@@ -602,11 +604,6 @@ export default function App() {
             </div>
           </div>
         )}
-        {mode !== "live" && styleNeedsSarvam && (
-          <p className="notice">
-            Tanglish output needs the Sarvam AI engine for now. Until then the text is written as spoken. Try Mixed: it writes English words in English, free on this device.
-          </p>
-        )}
         {mode !== "live" && translateLocally && engine !== "free" && (
           <p className="notice">English translation runs free on this device with Whisper{engine === "sarvam" ? " until a Sarvam key is added" : ""}.</p>
         )}
@@ -683,6 +680,11 @@ export default function App() {
           <button onClick={() => download(text, "txt")} disabled={!text}>
             {tr("Download .txt")}
           </button>
+          {/[A-Za-z]{3,}/.test(text) && (
+            <button onClick={() => setText(tanglishToTamil(text))} title={tr("Turn Tanglish typed in English letters into Tamil letters")}>
+              {tr("Tanglish → தமிழ்")}
+            </button>
+          )}
           {readAloudSupported && (
             <span className="read">
               <button onClick={() => void toggleRead()} disabled={!text && !stopSpeaking} aria-pressed={Boolean(stopSpeaking)}>

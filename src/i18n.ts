@@ -336,6 +336,7 @@ const TA: Record<string, string> = {
   "Creating your audio… the first one can take up to 20 seconds.": "உங்கள் audio உருவாகிறது… முதல் முறை 20 விநாடிகள் வரை ஆகலாம்.",
   "Creating audio… switching between Tamil and English can take up to 20 seconds.": "Audio உருவாகிறது… தமிழ் ↔ English மாறும்போது 20 விநாடிகள் வரை ஆகலாம்.",
   "The engine was not sure about this line. Listen and fix it in the text above.": "இந்த வரியில் engine-க்கு சந்தேகம். கேட்டு, மேலே உள்ள எழுத்தில் திருத்துங்கள்.",
+  "Turn Tanglish typed in English letters into Tamil letters": "ஆங்கில எழுத்தில் type செய்த Tanglish-ஐ தமிழ் எழுத்தாக மாற்றும்",
 };
 
 /** Interface text in the chosen language (English when there is no Tamil yet). Non-strings pass through. */
