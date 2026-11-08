@@ -133,3 +133,26 @@ textarea.small { font-size: 0.92rem; line-height: 1.5; padding: 10px 12px; }
 select { width: 100%; max-width: 100%; text-overflow: ellipsis; }
 .tabs button { min-width: 0; overflow-wrap: anywhere; }
 .read select { width: auto; }
+
+/* Landing: Tamil tagline, highlights, how it works, FAQ (2026-11-08) */
+.sub-ta { margin: 8px 0 0; font-size: clamp(1.05rem, 3.6vw, 1.3rem); font-weight: 600; color: var(--text); }
+.chips { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.chips li { font-size: 0.8rem; padding: 6px 12px; border-radius: 999px; background: var(--accent-soft); border: 1px solid rgb(124 108 255 / 0.3); color: var(--text); }
+.steps h2, .faq h2 { margin: 0 0 12px; font-size: 1.15rem; }
+.steps h2 small, .faq h2 small { color: var(--muted); font-weight: 400; font-size: 0.85rem; margin-left: 6px; }
+.steps ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; counter-reset: step; }
+.steps li { counter-increment: step; display: grid; gap: 4px; padding: 14px 16px 14px 56px; position: relative; border: 1px solid var(--line); border-radius: 16px; background: rgb(255 255 255 / 0.03); }
+.steps li::before { content: counter(step); position: absolute; left: 14px; top: 14px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 0.9rem; color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.steps b { font-size: 0.95rem; }
+.steps span { color: var(--muted); font-size: 0.86rem; line-height: 1.5; }
+.faq { display: grid; gap: 8px; }
+.faq details { border: 1px solid var(--line); border-radius: 14px; background: rgb(255 255 255 / 0.03); padding: 0 16px; }
+.faq summary { cursor: pointer; padding: 14px 0; font-weight: 600; font-size: 0.95rem; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; color: var(--accent-2); font-weight: 400; font-size: 1.2rem; line-height: 1; }
+.faq details[open] summary::after { content: "−"; }
+.faq summary:focus-visible { outline: 2px solid rgb(124 108 255 / 0.6); outline-offset: 2px; border-radius: 8px; }
+.faq details p { margin: 0 0 14px; color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
+/* Static text Google reads before the app loads (replaced by React) */
+.seo-fallback { max-width: 760px; margin: 0 auto; padding: 32px 16px; color: var(--muted); line-height: 1.6; }
+.seo-fallback h1 { color: var(--text); }

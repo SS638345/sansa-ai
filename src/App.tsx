@@ -64,6 +64,34 @@ function save(key: string, value: string) {
   }
 }
 
+/** Shown on the page; the same questions are in index.html as FAQPage structured data for Google. Keep both in sync. */
+const FAQ: { q: string; a: string }[] = [
+  {
+    q: "Is Sansa Voice free?",
+    a: "Yes. Voice to text, uploads, subtitles and the library are free. No sign up and no install.",
+  },
+  {
+    q: "How accurate is Tamil voice to text?",
+    a: SANSA_ENGINE_URL
+      ? "Tamil uses the SANSA Tamil engine, a Whisper model trained on Tamil speech (IIT Madras SPRING Lab), running on our own server. Clear speech with little background noise gives the best result. Turn on Clean background noise for noisy recordings."
+      : "Tamil uses a Whisper model trained on Tamil speech (IIT Madras SPRING Lab) that runs on your device. Clear speech with little background noise gives the best result. Turn on Clean background noise for noisy recordings.",
+  },
+  {
+    q: "Which files can I upload?",
+    a: "Audio such as mp3, m4a, wav, ogg, opus, amr, aac, WhatsApp voice notes and call recordings up to 25 MB, and mp4 or webm video up to 300 MB for subtitles.",
+  },
+  {
+    q: "Is my audio saved?",
+    a: SANSA_ENGINE_URL
+      ? "No. Tamil audio is sent to our server only to convert it and is not saved. Other languages are converted on your own device. Your saved texts stay only in your browser."
+      : "No. Audio is converted on your own device unless you choose an online engine. Your saved texts stay only in your browser.",
+  },
+  {
+    q: "Can I make YouTube or Instagram subtitles?",
+    a: "Yes. After you upload or record, download the subtitles as .srt or .vtt, or the text with times.",
+  },
+];
+
 export default function App() {
   const [langId, setLangId] = useState(() => load("vtt.lang", "ta-IN"));
   const lang = LANGUAGES.find((l) => l.id === langId) ?? LANGUAGES[0];
@@ -348,14 +376,26 @@ export default function App() {
           <span className="mark" aria-hidden="true">S</span>
           <span>SANSA <b>Voice</b></span>
         </a>
-        <span className={`pill ${status.ai ? "ok" : ""}`}>{status.ai ? "AI on" : "Free mode"}</span>
+        <span className={`pill ${status.ai || SANSA_ENGINE_URL ? "ok" : ""}`}>
+          {SANSA_ENGINE_URL ? "Tamil engine on" : status.ai ? "AI on" : "Free mode"}
+        </span>
       </nav>
 
       <header className="hero">
         <h1>
           Pesunga. <span className="grad">Text aagidum.</span>
         </h1>
-        <p className="sub">Voice to text in Tamil, Hindi, Telugu and 15+ Indian languages, right in your browser. No sign up, no install.</p>
+        <p className="sub-ta" lang="ta">பேசுங்க, எழுத்தா மாறிடும்.</p>
+        <p className="sub">
+          Tamil voice to text, plus Tanglish, English and 15+ Indian languages. Live mic, voice notes, call recordings and video
+          subtitles. No sign up, no install.
+        </p>
+        <ul className="chips" aria-label="Highlights">
+          <li>Free</li>
+          <li>No sign up</li>
+          {SANSA_ENGINE_URL && <li>Own Tamil engine</li>}
+          <li>Subtitles .srt</li>
+        </ul>
       </header>
 
       <main className="app">
@@ -660,8 +700,43 @@ export default function App() {
         </div>
         <div>
           <h3>Private</h3>
-          <p>No account. Your text is kept only in your own browser.</p>
+          <p>
+            No account. Your saved texts stay only in your own browser.
+            {SANSA_ENGINE_URL ? " Tamil audio is sent to our own server only to convert it, and is not saved." : ""}
+          </p>
         </div>
+      </section>
+
+      <section className="steps" aria-labelledby="how">
+        <h2 id="how">
+          How it works <small lang="ta">எப்படி use பண்றது</small>
+        </h2>
+        <ol>
+          <li>
+            <b>Choose a language</b>
+            <span>Tamil, Hindi, Telugu, English or any of 15+ languages.</span>
+          </li>
+          <li>
+            <b>Speak, record or upload</b>
+            <span>Live mic, a recording, a WhatsApp voice note, a call recording or a video.</span>
+          </li>
+          <li>
+            <b>Copy or download</b>
+            <span>Edit the text, copy it, or download .txt and .srt subtitles.</span>
+          </li>
+        </ol>
+      </section>
+
+      <section className="faq" aria-labelledby="faq">
+        <h2 id="faq">
+          Questions <small lang="ta">கேள்விகள்</small>
+        </h2>
+        {FAQ.map((f) => (
+          <details key={f.q}>
+            <summary>{f.q}</summary>
+            <p>{f.a}</p>
+          </details>
+        ))}
       </section>
 
       <footer className="foot">
