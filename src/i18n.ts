@@ -337,6 +337,11 @@ const TA: Record<string, string> = {
   "Creating audio… switching between Tamil and English can take up to 20 seconds.": "Audio உருவாகிறது… தமிழ் ↔ English மாறும்போது 20 விநாடிகள் வரை ஆகலாம்.",
   "The engine was not sure about this line. Listen and fix it in the text above.": "இந்த வரியில் engine-க்கு சந்தேகம். கேட்டு, மேலே உள்ள எழுத்தில் திருத்துங்கள்.",
   "Turn Tanglish typed in English letters into Tamil letters": "ஆங்கில எழுத்தில் type செய்த Tanglish-ஐ தமிழ் எழுத்தாக மாற்றும்",
+  "Sansa Voice text": "Sansa Voice எழுத்து",
+  "Download as a Word document": "Word document-ஆக download செய்",
+  "Opens a print page: choose Save as PDF": "Print page திறக்கும்: ‘Save as PDF’ தேர்ந்தெடுங்கள்",
+  "Share the text on WhatsApp": "எழுத்தை WhatsApp-இல் பகிர்",
+  "Allow pop-ups for this site to save as PDF.": "PDF-ஆக சேமிக்க இந்த தளத்துக்கு pop-up அனுமதி கொடுங்கள்.",
 };
 
 /** Interface text in the chosen language (English when there is no Tamil yet). Non-strings pass through. */

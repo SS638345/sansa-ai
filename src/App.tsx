@@ -13,6 +13,7 @@ import { Library } from "./Library";
 import { Agents, Api, Cleanup, Clone, Cta, Faq, Hero, HomeProvider, HowItWorks, Products, SiteFooter, SiteHeader, Voices, useTheme } from "./Landing";
 import { t, tr, useUi } from "./i18n";
 import { tanglishToTamil } from "./translit";
+import { printAsPdf, shareToWhatsApp, toDocx } from "./exportDoc";
 import { getStatus, transcribe, type Status } from "./api";
 
 const STYLES: { id: OutputStyle; label: string; note: string }[] = [
@@ -679,6 +680,32 @@ export default function App() {
           </button>
           <button onClick={() => download(text, "txt")} disabled={!text}>
             {tr("Download .txt")}
+          </button>
+          <button
+            onClick={() => {
+              const name = `sansa-voice-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, "-")}.docx`;
+              const a = document.createElement("a");
+              a.href = URL.createObjectURL(toDocx(text, tr("Sansa Voice text")));
+              a.download = name;
+              a.click();
+              setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+            }}
+            disabled={!text}
+            title={tr("Download as a Word document")}
+          >
+            Word
+          </button>
+          <button
+            onClick={() => {
+              if (!printAsPdf(text, tr("Sansa Voice text"))) setNotice(tr("Allow pop-ups for this site to save as PDF."));
+            }}
+            disabled={!text}
+            title={tr("Opens a print page: choose Save as PDF")}
+          >
+            PDF
+          </button>
+          <button onClick={() => void shareToWhatsApp(text)} disabled={!text} title={tr("Share the text on WhatsApp")}>
+            WhatsApp
           </button>
           {/[A-Za-z]{3,}/.test(text) && (
             <button onClick={() => setText(tanglishToTamil(text))} title={tr("Turn Tanglish typed in English letters into Tamil letters")}>
