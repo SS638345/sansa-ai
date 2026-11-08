@@ -11,6 +11,7 @@ import { denoiseToWav } from "./denoise";
 import { deleteItem, listItems, renameItem, saveItem, titleFrom, type LibraryItem } from "./libraryStore";
 import { readAloudSupported, speak, voiceFor, voicesReady } from "./readAloud";
 import { Library } from "./Library";
+import { Cta, Faq, Hero, HowItWorks, Products, SiteFooter, SiteHeader, useTheme } from "./Landing";
 
 const STYLES: { id: OutputStyle; label: string; note: string }[] = [
   { id: "native", label: "As spoken", note: "same language" },
@@ -187,6 +188,14 @@ export default function App() {
 
   const live = useLiveDictation(lang.id === "auto" ? "ta-IN" : lang.id, (chunk) => append(finish({ text: chunk, segments: [] }).text));
   const recorder = useVoiceRecorder();
+  const { theme, toggle: toggleTheme } = useTheme();
+  // "Talk live" in the hero: switch to the live mic in that language, then start once the language has applied.
+  const [autoStart, setAutoStart] = useState(false);
+  useEffect(() => {
+    if (!autoStart || mode !== "live") return;
+    setAutoStart(false);
+    if (!live.listening) live.start();
+  }, [autoStart, mode, live]);
 
   const sarvamReady = Boolean(SARVAM_PROXY_URL || sarvamKey.trim());
   const useSarvam = engine === "sarvam" && sarvamSupports(lang.id) && sarvamReady;
@@ -329,6 +338,18 @@ export default function App() {
     setMode(m);
   };
 
+  const talkLive = (langTag: string) => {
+    document.getElementById("app")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (busy) return;
+    if (!liveDictationSupported) {
+      switchMode("record");
+      return;
+    }
+    setLangId(langTag);
+    switchMode("live");
+    setAutoStart(true);
+  };
+
   const readLang = style === "english" && mode !== "live" ? "en-IN" : lang.id === "auto" ? "ta-IN" : lang.id;
   const toggleRead = async () => {
     if (stopSpeaking) {
@@ -370,33 +391,20 @@ export default function App() {
         : "Converting to text…";
 
   return (
-    <div className="page">
-      <nav className="nav">
-        <a className="brand" href="./">
-          <span className="mark" aria-hidden="true">S</span>
-          <span>SANSA <b>Voice</b></span>
-        </a>
+    <>
+      <SiteHeader theme={theme} onToggleTheme={toggleTheme} />
+      <Hero onTalkLive={talkLive} engineOn={Boolean(SANSA_ENGINE_URL)} />
+
+    <div className="page" id="app">
+      <div className="app-head">
+        <div>
+          <span className="eyebrow at">Voice to text</span>
+          <h2>Try it now.</h2>
+        </div>
         <span className={`pill ${status.ai || SANSA_ENGINE_URL ? "ok" : ""}`}>
           {SANSA_ENGINE_URL ? "Tamil engine on" : status.ai ? "AI on" : "Free mode"}
         </span>
-      </nav>
-
-      <header className="hero">
-        <h1>
-          Pesunga. <span className="grad">Text aagidum.</span>
-        </h1>
-        <p className="sub-ta" lang="ta">பேசுங்க, எழுத்தா மாறிடும்.</p>
-        <p className="sub">
-          Tamil voice to text, plus Tanglish, English and 15+ Indian languages. Live mic, voice notes, call recordings and video
-          subtitles. No sign up, no install.
-        </p>
-        <ul className="chips" aria-label="Highlights">
-          <li>Free</li>
-          <li>No sign up</li>
-          {SANSA_ENGINE_URL && <li>Own Tamil engine</li>}
-          <li>Subtitles .srt</li>
-        </ul>
-      </header>
+      </div>
 
       <main className="app">
 
@@ -688,68 +696,17 @@ export default function App() {
         onDelete={(item) => void deleteItem(item.id).then(refreshLibrary)}
       />
       </main>
-
-      <section className="features" aria-label="Features">
-        <div>
-          <h3>Live typing</h3>
-          <p>Words appear while you speak. Free in Chrome and Android.</p>
-        </div>
-        <div>
-          <h3>Indian languages</h3>
-          <p>Tamil, Hindi, Telugu, Kannada, Malayalam, Bengali, Marathi, Gujarati, Punjabi, Urdu and more.</p>
-        </div>
-        <div>
-          <h3>Private</h3>
-          <p>
-            No account. Your saved texts stay only in your own browser.
-            {SANSA_ENGINE_URL ? " Tamil audio is sent to our own server only to convert it, and is not saved." : ""}
-          </p>
-        </div>
-      </section>
-
-      <section className="steps" aria-labelledby="how">
-        <h2 id="how">
-          How it works <small lang="ta">எப்படி use பண்றது</small>
-        </h2>
-        <ol>
-          <li>
-            <b>Choose a language</b>
-            <span>Tamil, Hindi, Telugu, English or any of 15+ languages.</span>
-          </li>
-          <li>
-            <b>Speak, record or upload</b>
-            <span>Live mic, a recording, a WhatsApp voice note, a call recording or a video.</span>
-          </li>
-          <li>
-            <b>Copy or download</b>
-            <span>Edit the text, copy it, or download .txt and .srt subtitles.</span>
-          </li>
-        </ol>
-      </section>
-
-      <section className="faq" aria-labelledby="faq">
-        <h2 id="faq">
-          Questions <small lang="ta">கேள்விகள்</small>
-        </h2>
-        {FAQ.map((f) => (
-          <details key={f.q}>
-            <summary>{f.q}</summary>
-            <p>{f.a}</p>
-          </details>
-        ))}
-      </section>
-
-      <footer className="foot">
-        <span>© {new Date().getFullYear()} SANSA AI</span>
-        <nav className="foot-links" aria-label="Legal">
-          <a href="./about.html">About</a>
-          <a href="./contact.html">Contact</a>
-          <a href="./privacy.html">Privacy</a>
-          <a href="./terms.html">Terms</a>
-          <a href="./refund.html">Refund</a>
-          <a href="https://app.sansaai.in">SANSA AI app</a>
-        </nav>
-      </footer>
+      <p className="privacy-line">
+        No account. Your saved texts stay only in your own browser.
+        {SANSA_ENGINE_URL ? " Tamil audio is sent to our own server only to convert it, and is not saved." : ""}
+      </p>
     </div>
+
+      <Products />
+      <HowItWorks />
+      <Faq items={FAQ} />
+      <Cta />
+      <SiteFooter />
+    </>
   );
 }
