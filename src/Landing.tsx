@@ -77,6 +77,15 @@ const VOICES: Voice[] = (
 const voiceFor2 = (lang: Lang, gender: Gender) => VOICES.find((v) => v.lang === lang && v.gender === gender) ?? VOICES[0];
 
 const TTS_URL = "/tts/speak";
+const WARM_URL = "/tts/warm";
+const warmedAt: Partial<Record<Lang, number>> = {};
+/** Ask the voice engine to load this language now, so it is ready when the visitor presses play (at most once a minute). */
+function warmVoice(lang: Lang) {
+  const now = Date.now();
+  if (now - (warmedAt[lang] ?? 0) < 60_000) return;
+  warmedAt[lang] = now;
+  void fetch(WARM_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lang }), keepalive: true }).catch(() => undefined);
+}
 
 const SAMPLE: Record<Lang, string> = {
   en: "Welcome to SANSA. Type anything here and hear it come alive.",
@@ -228,6 +237,8 @@ export function HomeProvider({
 }) {
   const [lang, setLang] = useState<Lang>("en");
   const [voice, setVoice] = useState("meera");
+  useEffect(() => warmVoice(lang), [lang]);
+  useEffect(() => warmVoice((VOICES.find((v) => v.id === voice) ?? VOICES[0]).lang), [voice]);
   const [playing, setPlaying] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [lastAudio, setLastAudio] = useState<{ id: string; url: string; name: string } | null>(null);
@@ -972,7 +983,7 @@ export function Voices() {
       </div>
       <div className="filters" role="radiogroup" aria-label={tr("Voice language")}>
         {FILTERS.map((f) => (
-          <button key={f} role="radio" aria-checked={filter === f} className={filter === f ? "on" : ""} onClick={() => setFilter(f)}>
+          <button key={f} role="radio" aria-checked={filter === f} className={filter === f ? "on" : ""} onClick={() => { setFilter(f); if (f === "Tamil") warmVoice("ta"); }}>
             {tr(f)}
           </button>
         ))}
@@ -991,6 +1002,8 @@ export function Voices() {
               <button
                 className="play-btn"
                 aria-label={on || busy ? t(`Stop ${v.name}`, `${tr(v.name)} நிறுத்து`) : t(`Play ${v.name}`, `${tr(v.name)} கேட்க`)}
+                onPointerEnter={() => warmVoice(v.lang)}
+                onFocus={() => warmVoice(v.lang)}
                 onClick={() => void h.play(v.id, voiceSample(v), v).then(setNote)}
               >
                 {busy ? "…" : on ? "■" : "▶"}
@@ -1138,7 +1151,12 @@ function LongTts() {
         disabled={busy}
       />
       <div className="long-row">
-        <select value={voice} onChange={(e) => setVoice(e.target.value)} disabled={busy} aria-label={tr("Voice")}>
+        <select
+          value={voice}
+          onChange={(e) => { setVoice(e.target.value); warmVoice((VOICES.find((x) => x.id === e.target.value) ?? VOICES[0]).lang); }}
+          disabled={busy}
+          aria-label={tr("Voice")}
+        >
           {VOICES.map((x) => (
             <option key={x.id} value={x.id}>
               {tr(x.name)} · {tr(x.desc)}
