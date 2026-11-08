@@ -15,6 +15,7 @@ import {
   type ReactNode,
 } from "react";
 import { readAloudSupported, voiceFor, voicesReady } from "./readAloud";
+import { think, type Reply } from "./agentBrain";
 
 type Theme = "light" | "dark";
 type Lang = "en" | "ta";
@@ -111,103 +112,10 @@ function recognitionCtor(): RecCtor | undefined {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition;
 }
 
-/* ------------------------------------------------------------------ agent brain (answers from what SANSA really offers) */
+/* ------------------------------------------------------------------ agent brain: our own (agentBrain.ts), no external AI */
 
 type Msg = { role: "user" | "assistant"; content: string };
 type AgentState = "idle" | "listening" | "thinking" | "speaking";
-
-const KB: { k: RegExp; en: string; ta: string; go?: string }[] = [
-  {
-    k: /\b(hi|hello|hey|vanakkam)\b|வணக்கம்/i,
-    en: "Hello! I can tell you about SANSA, or start voice to text for you. What would you like to know?",
-    ta: "வணக்கம்! SANSA பற்றி கேளுங்க, இல்லனா voice to text start பண்ணி தர்றேன்.",
-  },
-  {
-    k: /start|open|try|dictat|voice to text|speech to text|transcri|ஆரம்பி|தொடங்கு|எழுத்தா/i,
-    en: "Sure. I'm opening voice to text now. Tap the mic and speak, and your words will appear as text.",
-    ta: "சரி. Voice to text-ஐ திறக்கிறேன். Mic-ஐ தொட்டு பேசுங்க, எழுத்தா வந்துடும்.",
-    go: "app",
-  },
-  {
-    k: /free|price|pric|cost|pay|plan|money|charge|விலை|இலவச|காசு|பணம்/i,
-    en: "Voice to text, uploads, subtitles and your library are free. You don't need an account.",
-    ta: "Voice to text, upload, subtitles எல்லாமே இலவசம். Account தேவையில்லை.",
-  },
-  {
-    k: /clon|குளோன்|my own voice|என் குரல்/i,
-    en: "Voice cloning is coming soon. You can already record a ten second sample on this page and play it back.",
-    ta: "Voice cloning விரைவில் வருது. இப்போ இந்த page-ல பத்து second sample record பண்ணி கேட்கலாம்.",
-    go: "clone",
-  },
-  {
-    k: /dub|டப்/i,
-    en: "Dubbing is coming soon. Today you can make subtitles from a video in Tamil or English.",
-    ta: "Dubbing விரைவில் வருது. இப்போ video-வுக்கு Tamil அல்லது English subtitles எடுக்கலாம்.",
-  },
-  {
-    k: /api|developer|sdk|integrat|code|டெவலப்/i,
-    en: "The SANSA API is coming soon. Use the contact page to ask for early access.",
-    ta: "SANSA API விரைவில் வருது. Early access வேணும்னா contact page-ல கேளுங்க.",
-    go: "api",
-  },
-  {
-    k: /agent|phone|call centre|call center|booking|receptionist/i,
-    en: "Phone voice agents are coming soon. I'm a small preview of them, right here on the website.",
-    ta: "Phone voice agents விரைவில் வருது. நான் அதோட சின்ன preview தான்.",
-  },
-  {
-    k: /subtitle|srt|vtt|video|youtube|instagram|reel|சப்டைட்டில்/i,
-    en: "Upload a video and download subtitles as srt or vtt for YouTube or Instagram.",
-    ta: "Video upload பண்ணி srt அல்லது vtt subtitles download பண்ணலாம்.",
-  },
-  {
-    k: /upload|file|mp3|m4a|wav|whatsapp|voice note|recording|கோப்பு|ஃபைல்/i,
-    en: "You can upload mp3, m4a, wav, WhatsApp voice notes and call recordings up to 25 megabytes, and videos up to 300.",
-    ta: "mp3, m4a, wav, WhatsApp voice notes, call recordings 25 MB வரை upload பண்ணலாம். Video 300 MB வரை.",
-  },
-  {
-    k: /private|privacy|safe|secure|save|store|data|தனியுரிமை|பாதுகாப்/i,
-    en: "Your audio is not saved. Tamil audio goes to our own server only to convert it, and your texts stay in your browser.",
-    ta: "உங்க audio save ஆகாது. Tamil audio convert பண்ண மட்டும் எங்க server-க்கு போகும். Text உங்க browser-லயே இருக்கும்.",
-  },
-  {
-    k: /accura|correct|mistake|wrong|quality|துல்லிய|தப்பு/i,
-    en: "Tamil runs on our own Tamil speech engine. Clear speech with little background noise gives the best result.",
-    ta: "Tamil-க்கு எங்க சொந்த Tamil engine. சத்தம் குறைவா, தெளிவா பேசினா நல்ல result வரும்.",
-  },
-  {
-    k: /language|hindi|telugu|kannada|malayalam|bengali|marathi|english|tamil|மொழி|தமிழ்/i,
-    en: "Voice to text works in Tamil, English, Tanglish and more than fifteen Indian languages.",
-    ta: "Tamil, English, Tanglish, மேலும் பதினைந்துக்கு மேல இந்திய மொழிகள்ல voice to text வேலை செய்யும்.",
-  },
-  {
-    k: /read aloud|text to speech|tts|voices?|speak|குரல்|படி/i,
-    en: "Read aloud uses the voices on your own device. Natural SANSA AI voices are coming soon.",
-    ta: "Read aloud உங்க phone அல்லது computer-ல இருக்கற voice-ஐ use பண்ணும். SANSA AI voices விரைவில் வருது.",
-    go: "voices",
-  },
-  {
-    k: /contact|support|help|email|reach|talk to (a )?human|தொடர்பு|உதவி/i,
-    en: "You can reach the SANSA team from the contact page. The link is in the footer.",
-    ta: "SANSA team-ஐ contact page-ல தொடர்பு கொள்ளலாம். Link கீழே footer-ல இருக்கு.",
-  },
-  {
-    k: /what (can|do)|what is sansa|about|என்ன/i,
-    en: "SANSA turns speech into text in Tamil, English and fifteen more languages, makes subtitles and reads text aloud. AI voices, cloning and dubbing are coming next.",
-    ta: "SANSA பேச்சை எழுத்தா மாற்றும், subtitles எடுக்கும், text-ஐ படிச்சு காட்டும். AI voices, cloning, dubbing அடுத்து வருது.",
-  },
-];
-
-function answer(text: string): { reply: string; go?: string } {
-  const ta = /[\u0B80-\u0BFF]/.test(text);
-  const hit = KB.find((x) => x.k.test(text));
-  if (hit) return { reply: ta ? hit.ta : hit.en, go: hit.go };
-  return {
-    reply: ta
-      ? "அது பற்றி எனக்கு சரியா தெரியல. Contact page-ல SANSA team-ஐ கேளுங்க, அல்லது voice to text try பண்ணுங்க."
-      : "I'm not sure about that one. You can ask the SANSA team on the contact page, or try voice to text right here.",
-  };
-}
 
 /* ------------------------------------------------------------------ context: player, agent, palette */
 
@@ -1679,6 +1587,37 @@ function AgentOverlay({ onClose }: { onClose: () => void }) {
     [h.speakWait],
   );
 
+  const [suggest, setSuggest] = useState<string[]>(["What can SANSA do?", "Is it free?", "Start voice to text"]);
+
+  const act = useCallback(
+    async (r: Reply) => {
+      const a = r.action;
+      if (!a) return say(r.text);
+      if (a.type === "say") return say(a.text);
+      if (a.type === "play") {
+        handsFree.current = false;
+        const v = VOICES.find((x) => x.id === a.voice);
+        set("idle");
+        if (v) await h.play(v.id, voiceSample(v), v);
+        return;
+      }
+      if (a.type === "theme") {
+        h.toggleTheme();
+        return say(r.text);
+      }
+      // dictate / goto / page: say it, then do it
+      handsFree.current = false;
+      await say(r.text);
+      if (!alive.current) return;
+      if (a.type === "dictate") h.startDictation();
+      else if (a.type === "goto") {
+        onClose();
+        h.goTo(a.id);
+      } else if (a.type === "page") window.location.href = a.url;
+    },
+    [h, onClose, say],
+  );
+
   const send = useCallback(
     (raw: string, fromVoice = false) => {
       const text = raw.trim();
@@ -1687,28 +1626,15 @@ function AgentOverlay({ onClose }: { onClose: () => void }) {
       setMsgs((m) => [...m, { role: "user", content: text }]);
       setInput("");
       set("thinking");
-      const { reply, go } = answer(text);
+      const r = think(text);
       window.setTimeout(() => {
         if (!alive.current) return;
-        setMsgs((m) => [...m, { role: "assistant", content: reply }]);
-        if (go) {
-          handsFree.current = false;
-          set("idle");
-          void say(reply);
-          window.setTimeout(() => {
-            if (!alive.current) return;
-            if (go === "app") h.startDictation();
-            else {
-              onClose();
-              h.goTo(go);
-            }
-          }, 1600);
-          return;
-        }
-        void say(reply);
-      }, 450);
+        setMsgs((m) => [...m, { role: "assistant", content: r.text }]);
+        if (r.suggestions.length) setSuggest(r.suggestions);
+        void act(r);
+      }, 350);
     },
-    [h, onClose, say],
+    [act],
   );
 
   const listen = useCallback(() => {
@@ -1783,7 +1709,6 @@ function AgentOverlay({ onClose }: { onClose: () => void }) {
     listen();
   };
   const label = { idle: "Agent ready", listening: "Listening…", thinking: "Thinking…", speaking: "Speaking" }[state];
-  const suggest = ["What can SANSA do?", "Does it support Tamil?", "How does voice cloning work?"];
 
   return (
     <div className="agent" role="dialog" aria-label="SANSA voice agent">
