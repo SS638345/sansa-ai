@@ -1,7 +1,11 @@
+# Checks every pull request (and main): types, tests (agent answers + facts, Tanglish, Word export), build.
+# Name "CI" and job "build" kept from the earlier workflow so any required-check settings still match.
 name: CI
 
 on:
   pull_request:
+  push:
+    branches: [main]
 
 jobs:
   build:
@@ -13,4 +17,6 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
       - run: npm run build

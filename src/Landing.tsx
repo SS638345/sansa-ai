@@ -16,6 +16,7 @@ import {
 } from "react";
 import { readAloudSupported, voiceFor, voicesReady } from "./readAloud";
 import { think, type Reply } from "./agentBrain";
+import { LONG_TEXT_MAX_CHARS, SPEAK_MAX_CHARS } from "./limits";
 import { setUi, t, tr, useUi } from "./i18n";
 
 type Theme = "light" | "dark";
@@ -822,7 +823,7 @@ export function Hero() {
             value={text}
             onChange={(e) => setText(e.target.value)}
             aria-label={tr("Text to hear")}
-            maxLength={500}
+            maxLength={SPEAK_MAX_CHARS}
             lang={h.lang}
             placeholder={tr("Type anything to hear it")}
           />
@@ -1010,7 +1011,7 @@ export function Voices() {
 
 /* ------------------------------------------------------------------ long text -> one MP3 (A6) */
 
-const LONG_MAX = 10000;
+const LONG_MAX = LONG_TEXT_MAX_CHARS;
 // Each request must finish inside Cloudflare's 100 s limit (error 524); ~600 characters takes 25-45 s on the home server.
 const PART_MAX = 600;
 
