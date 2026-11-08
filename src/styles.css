@@ -20,7 +20,7 @@
   --danger: #ff8a80;
   --rec: #f43f5e;
   color-scheme: dark;
-  font-family: "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", "Noto Sans Tamil", Roboto, sans-serif;
+  font-family: "Schibsted Grotesk", "Noto Sans Tamil", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 :root[data-theme="light"] {
   --bg: #f5f4f0;
@@ -537,3 +537,20 @@ kbd { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; pa
 .long-row select { flex: 1; min-width: 200px; width: auto; }
 .long-row .btn-rec { flex: 0 0 auto; min-width: 160px; }
 .long-tts audio { width: 100%; }
+
+/* ---- polish 2026-11-08: readable small text, Tamil typography, bigger touch targets ---- */
+/* small grey text was below the 4.5:1 reading contrast (footer, menu, voice labels) */
+:root { --muted-2: #8e8b99; }
+:root[data-theme="light"] { --muted-2: #64616d; --accent-text: #965700; --accent-2: #965700; }
+.code-tabs button { color: #8e8b99; }
+/* Tamil has no capital letters and wide letter spacing breaks the letters apart: plain Tamil font for small labels */
+:lang(ta) .eyebrow, :lang(ta) .prod-name em, :lang(ta) .soon-tag, :lang(ta) .check-tag, :lang(ta) .agent-status, :lang(ta) .tabs button small {
+  font-family: "Noto Sans Tamil", "Schibsted Grotesk", system-ui, sans-serif; letter-spacing: 0; text-transform: none;
+}
+:lang(ta) .eyebrow { font-size: 13px; }
+:lang(ta) .hero2 h1, :lang(ta) .sec h2, :lang(ta) .cta h2, :lang(ta) .app-head h2 { letter-spacing: -0.01em; line-height: 1.2; }
+/* phones: buttons at least 40px tall so they are easy to tap */
+@media (pointer: coarse) {
+  .seg button, .voice-chips button, .options .link { min-height: 40px; }
+  .code-tabs button { min-height: 36px; }
+}
