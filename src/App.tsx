@@ -117,7 +117,7 @@ export default function App() {
   });
   const [engineUrl, setEngineUrl] = useState(() => load("vtt.engineUrl", ""));
   const [sarvamKey, setSarvamKey] = useState(() => load("vtt.sarvamKey", ""));
-  const [pieces, setPieces] = useState<{ done: number; total: number } | null>(null);
+  const [pieces, setPieces] = useState<{ done: number; total: number; left?: number; resumed?: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [style, setStyle] = useState<OutputStyle>(() => {
@@ -237,7 +237,13 @@ export default function App() {
       const raw: Transcript = translateLocally
         ? await local()
         : useSansa
-        ? await transcribeWithSansa(input, lang.id, sansaUrl!, (done, total) => setPieces({ done, total })).catch((e) => {
+        ? await transcribeWithSansa(
+            input,
+            lang.id,
+            sansaUrl!,
+            (done, total, left, resumed) => setPieces({ done, total, left, resumed }),
+            name ? `${name}|${audio.size}|${lang.id}|${denoise ? 1 : 0}` : undefined,
+          ).catch((e) => {
             // Engine has no model for this language yet: fall back to the free on-device engine.
             if (!(e instanceof SansaLanguageUnavailable)) throw e;
             setPieces(null);
@@ -304,9 +310,10 @@ export default function App() {
   const onFile = async (file: File | undefined) => {
     if (!file) return;
     const isVideo = file.type.startsWith("video/") || /\.(mp4|mov|mkv|m4v)$/i.test(file.name);
-    const maxMb = isVideo ? 300 : 25;
+    // Our own Tamil engine takes long recordings (up to about an hour); on-device models stay at 25 MB.
+    const maxMb = isVideo ? 300 : useSansa ? 200 : 25;
     if (file.size > maxMb * 1024 * 1024) {
-      setError(`File is too big. Max ${maxMb} MB for ${isVideo ? "video" : "audio"}.`);
+      setError(t(`File is too big. Max ${maxMb} MB for ${isVideo ? "video" : "audio"}.`, `File மிகப் பெரியது. ${isVideo ? "Video" : "Audio"}-க்கு அதிகபட்சம் ${maxMb} MB.`));
       return;
     }
     // Some phones leave the type empty for .mov/.mkv; mark it so the timeline shows a video player.
@@ -407,8 +414,15 @@ export default function App() {
     ? `Cleaning background noise… ${Math.round(cleaning * 100)}%`
     : pieces
     ? pieces.total > 1
-      ? `${useSansa ? "SANSA engine" : "Sarvam AI"}: converting part ${Math.min(pieces.done + 1, pieces.total)} of ${pieces.total}…`
-      : `${useSansa ? "SANSA engine" : "Sarvam AI"}: converting…`
+      ? (() => {
+          const eng = useSansa ? "SANSA engine" : "Sarvam AI";
+          const part = Math.min(pieces.done + 1, pieces.total);
+          const m = pieces.left != null ? Math.max(1, Math.round(pieces.left / 60)) : null;
+          const left = m == null ? "" : t(` · about ${m} min left`, ` · சுமார் ${m} நிமிடம் மீதம்`);
+          const resumed = pieces.resumed ? t(` · continued from part ${pieces.resumed + 1}`, ` · பகுதி ${pieces.resumed + 1}-இல் இருந்து தொடர்கிறது`) : "";
+          return t(`${eng}: converting part ${part} of ${pieces.total}…`, `${eng}: பகுதி ${part} / ${pieces.total} மாற்றுகிறது…`) + left + resumed;
+        })()
+      : t(`${useSansa ? "SANSA engine" : "Sarvam AI"}: converting…`, `${useSansa ? "SANSA engine" : "Sarvam AI"}: மாற்றுகிறது…`)
     : progress?.stage === "decoding"
       ? "Reading audio…"
       : progress?.stage === "loading"
@@ -509,7 +523,7 @@ export default function App() {
               {busy ? "Working…" : "Choose audio or video"}
             </label>
             <p className="hint">
-              {tr("Any audio: mp3, m4a, wav, ogg, opus, amr, aac, flac, wma, 3gp, WhatsApp voice notes, call recordings (max 25 MB), or mp4/webm video for subtitles (max 300 MB). First time, the speech model downloads once.")}
+              {useSansa ? tr("Any audio: mp3, m4a, wav, ogg, opus, amr, aac, WhatsApp voice notes and call recordings, up to about 1 hour (200 MB). Long recordings show the time left and continue where they stopped if the page closes. Video for subtitles up to 300 MB.") : tr("Any audio: mp3, m4a, wav, ogg, opus, amr, aac, flac, wma, 3gp, WhatsApp voice notes, call recordings (max 25 MB), or mp4/webm video for subtitles (max 300 MB). First time, the speech model downloads once.")}
             </p>
           </div>
         )}

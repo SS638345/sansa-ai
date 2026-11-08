@@ -347,6 +347,7 @@ const TA: Record<string, string> = {
   "Create MP3": "MP3 உருவாக்கு",
   "⬇ Download MP3": "⬇ MP3 பதிவிறக்கு",
   "Something went wrong. Try again.": "ஏதோ தவறு நடந்தது. மீண்டும் முயற்சிக்கவும்.",
+  "Any audio: mp3, m4a, wav, ogg, opus, amr, aac, WhatsApp voice notes and call recordings, up to about 1 hour (200 MB). Long recordings show the time left and continue where they stopped if the page closes. Video for subtitles up to 300 MB.": "எந்த audio-வும்: mp3, m4a, wav, ogg, opus, amr, aac, WhatsApp voice notes, call recordings — சுமார் 1 மணி நேரம் வரை (200 MB). நீளமான recording-க்கு மீதமுள்ள நேரம் காட்டும்; page மூடினாலும் நின்ற இடத்தில் இருந்து தொடரும். Subtitles-க்கு video 300 MB வரை.",
 };
 
 /** Interface text in the chosen language (English when there is no Tamil yet). Non-strings pass through. */
