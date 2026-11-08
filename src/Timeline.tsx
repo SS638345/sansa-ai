@@ -89,7 +89,7 @@ export function Timeline({ segments, mediaUrl, kind }: { segments: Segment[]; me
               onClick={() => seek(s)}
               disabled={!audioUrl}
               aria-current={i === active}
-              title={s.check ? "The engine was not sure about this line. Listen and fix it in the text above." : undefined}
+              title={s.check ? tr("The engine was not sure about this line. Listen and fix it in the text above.") : undefined}
             >
               <time>{clock(s.start)}</time>
               <span dir="auto">

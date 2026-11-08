@@ -192,7 +192,7 @@ const TA: Record<string, string> = {
   "Live mic": "நேரடி mic",
   free: "இலவசம்",
   "Record & convert": "பதிவு செய்து மாற்று",
-  "Upload audio": "Audio upload",
+  "Upload audio": "ஆடியோ upload",
   "This browser has no live speech engine. Open in Chrome, or use Record & convert.":
     "இந்த browser-இல் நேரடி பேச்சு வசதி இல்லை. Chrome-இல் திறங்கள், அல்லது ‘பதிவு செய்து மாற்று’ பயன்படுத்துங்கள்.",
   "Record first, then the whole clip is converted. More accurate for long talks.":
@@ -232,7 +232,7 @@ const TA: Record<string, string> = {
   Slow: "மெதுவாக",
   Normal: "சாதாரணம்",
   Fast: "வேகமாக",
-  "Subtitles .srt": "Subtitles .srt",
+  "Subtitles .srt": "சப்டைட்டில் .srt",
   "Text with times": "நேரத்துடன் எழுத்து",
   "Subtitles for YouTube, Instagram, video editors": "YouTube, Instagram, video editors-க்கு subtitles",
   "Subtitles for web video": "Web video-க்கு subtitles",
@@ -241,7 +241,7 @@ const TA: Record<string, string> = {
   "No speech found in this audio.": "இந்த audio-வில் பேச்சு இல்லை.",
   "Could not open the microphone. Allow mic access and try again.": "Mic-ஐ திறக்க முடியவில்லை. Mic அனுமதி கொடுத்து மீண்டும் முயற்சிக்கவும்.",
   "Copy failed. Select the text and copy manually.": "நகலெடுக்க முடியவில்லை. எழுத்தை தேர்ந்தெடுத்து நீங்களே நகலெடுங்கள்.",
-  "Could not open the shared file. Use Upload audio instead.": "பகிர்ந்த file-ஐ திறக்க முடியவில்லை. ‘Audio upload’ பயன்படுத்துங்கள்.",
+  "Could not open the shared file. Use Upload audio instead.": "பகிர்ந்த file-ஐ திறக்க முடியவில்லை. ‘ஆடியோ upload’ பயன்படுத்துங்கள்.",
   // library / timeline
   "My library": "என் நூலகம்",
   "Upload or record something and it will be kept here, only in this browser.": "Upload அல்லது பதிவு செய்தவை இங்கே, இந்த browser-இல் மட்டும் சேமிக்கப்படும்.",
@@ -326,10 +326,26 @@ const TA: Record<string, string> = {
   "You’re booked for 5:30 PM tomorrow. I’ve sent the details by SMS.": "நாளை மாலை 5:30-க்கு book ஆயிடுச்சு. விவரங்களை SMS-ல அனுப்பிட்டேன்.",
   "{n} lines · tap a line to play from there": "{n} வரிகள் · ஒரு வரியை தொட்டு அங்கிருந்து கேளுங்கள்",
   "{n} to check": "{n} சரிபார்க்க",
+  // added 2026-11-08 (A3 finish): labels, live status and progress text
+  "All rights reserved.": "அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.",
+  "Agent ready": "Agent தயார்",
+  "Listening…": "கேட்கிறது…",
+  "Thinking…": "யோசிக்கிறது…",
+  Speaking: "பேசுகிறது",
+  "▶ Play your voice": "▶ உங்கள் குரலைக் கேளுங்கள்",
+  "Creating your audio… the first one can take up to 20 seconds.": "உங்கள் audio உருவாகிறது… முதல் முறை 20 விநாடிகள் வரை ஆகலாம்.",
+  "Creating audio… switching between Tamil and English can take up to 20 seconds.": "Audio உருவாகிறது… தமிழ் ↔ English மாறும்போது 20 விநாடிகள் வரை ஆகலாம்.",
+  "The engine was not sure about this line. Listen and fix it in the text above.": "இந்த வரியில் engine-க்கு சந்தேகம். கேட்டு, மேலே உள்ள எழுத்தில் திருத்துங்கள்.",
 };
 
 /** Interface text in the chosen language (English when there is no Tamil yet). Non-strings pass through. */
 export function tr<T>(s: T): T {
   if (cur !== "ta" || typeof s !== "string") return s;
-  return ((TA[s.trim()] ?? s) as unknown) as T;
+  const key = s.trim();
+  const v = TA[s] ?? TA[key] ?? TA[` ${key}`];
+  if (v === undefined) return s;
+  // keep the original's leading / trailing spaces (text is often joined to the words around it)
+  const lead = s.match(/^\s*/)?.[0] ?? "";
+  const trail = s.match(/\s*$/)?.[0] ?? "";
+  return ((lead + v.trim() + trail) as unknown) as T;
 }

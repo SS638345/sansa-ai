@@ -16,7 +16,7 @@ import {
 } from "react";
 import { readAloudSupported, voiceFor, voicesReady } from "./readAloud";
 import { think, type Reply } from "./agentBrain";
-import { setUi, tr, useUi } from "./i18n";
+import { setUi, t, tr, useUi } from "./i18n";
 
 type Theme = "light" | "dark";
 type Lang = "en" | "ta";
@@ -508,7 +508,7 @@ export function SiteHeader() {
         <button
           className="menu-btn"
           onClick={() => setMenu((m) => !m)}
-          aria-label={menu ? "Close menu" : "Open menu"}
+          aria-label={menu ? tr("Close menu") : tr("Open menu")}
           aria-expanded={menu}
           aria-controls="mobile-menu"
         >
@@ -857,7 +857,7 @@ export function Hero() {
         </div>
         {(note || h.lastAudio?.id === "hero" || h.loadingId === "hero") && (
           <p className="hero2-note" role="status">
-            {h.loadingId === "hero" ? "Creating your audio… the first one can take up to 20 seconds." : note}
+            {h.loadingId === "hero" ? tr("Creating your audio… the first one can take up to 20 seconds.") : note}
             {h.lastAudio?.id === "hero" && h.loadingId !== "hero" && (
               <a className="dl-link" href={h.lastAudio.url} download={h.lastAudio.name}>
                 {tr("⬇ Download mp3")}
@@ -988,7 +988,7 @@ export function Voices() {
               </div>
               <button
                 className="play-btn"
-                aria-label={on || busy ? `Stop ${tr(v.name)}` : `Play ${tr(v.name)}`}
+                aria-label={on || busy ? t(`Stop ${v.name}`, `${tr(v.name)} நிறுத்து`) : t(`Play ${v.name}`, `${tr(v.name)} கேட்க`)}
                 onClick={() => void h.play(v.id, voiceSample(v), v).then(setNote)}
               >
                 {busy ? "…" : on ? "■" : "▶"}
@@ -999,7 +999,7 @@ export function Voices() {
       </div>
       {(note || (h.loadingId && VOICES.some((v) => v.id === h.loadingId))) && (
         <p className="sec-note" role="status">
-          {h.loadingId && VOICES.some((v) => v.id === h.loadingId) ? "Creating audio… switching between Tamil and English can take up to 20 seconds." : note}
+          {h.loadingId && VOICES.some((v) => v.id === h.loadingId) ? tr("Creating audio… switching between Tamil and English can take up to 20 seconds.") : note}
         </p>
       )}
     </section>
@@ -1143,7 +1143,7 @@ export function Cleanup() {
           </p>
 
           <button className="btn-rec" onClick={() => void run()} disabled={!file || busy}>
-            {busy ? (stage === "reading" ? tr("Reading file…") : `Cleaning… ${Math.round(progress * 100)}%`) : tr("✨ Clean audio")}
+            {busy ? (stage === "reading" ? tr("Reading file…") : t(`Cleaning… ${Math.round(progress * 100)}%`, `சுத்தம் செய்கிறது… ${Math.round(progress * 100)}%`)) : tr("✨ Clean audio")}
           </button>
           {busy && (
             <div className="clean-prog" aria-hidden="true">
@@ -1159,7 +1159,7 @@ export function Cleanup() {
           {result && (
             <div className="clean-result">
               <p className="clean-stat" role="status">
-                Done · {mins(result.seconds)} cleaned{result.db > 0 ? ` · background noise ${result.db} dB quieter` : ""}
+                {t(`Done · ${mins(result.seconds)} cleaned`, `முடிந்தது · ${mins(result.seconds)} சுத்தம் செய்யப்பட்டது`)}{result.db > 0 ? t(` · background noise ${result.db} dB quieter`, ` · பின்னணி சத்தம் ${result.db} dB குறைந்தது`) : ""}
               </p>
               <label className="ab">
                 <span>{tr("Before")}</span>
@@ -1331,7 +1331,7 @@ export function Clone() {
             </button>
             {st === "ready" && (
               <button className="btn-outline" onClick={playBack}>
-                {playingBack ? tr("■ Stop") : "▶ Play your voice"}
+                {playingBack ? tr("■ Stop") : tr("▶ Play your voice")}
               </button>
             )}
           </div>
@@ -1543,7 +1543,7 @@ export function SiteFooter() {
           </Col>
         </div>
         <div className="foot-bottom">
-          <span>© {new Date().getFullYear()} SANSA AI. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} SANSA AI. {tr("All rights reserved.")}</span>
           <div className="foot-social">
             <a href="https://www.instagram.com/sansaai.in">Instagram</a>
             <a href="https://x.com/sansa06in">X</a>
@@ -1718,7 +1718,7 @@ function AgentOverlay({ onClose }: { onClose: () => void }) {
     }
     listen();
   };
-  const label = { idle: "Agent ready", listening: "Listening…", thinking: "Thinking…", speaking: "Speaking" }[state];
+  const label = tr({ idle: "Agent ready", listening: "Listening…", thinking: "Thinking…", speaking: "Speaking" }[state]);
 
   return (
     <div className="agent" role="dialog" aria-label={tr("SANSA voice agent")}>

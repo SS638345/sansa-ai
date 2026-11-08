@@ -11,7 +11,7 @@ import { deleteItem, listItems, renameItem, saveItem, titleFrom, type LibraryIte
 import { readAloudSupported, speak, voiceFor, voicesReady } from "./readAloud";
 import { Library } from "./Library";
 import { Agents, Api, Cleanup, Clone, Cta, Faq, Hero, HomeProvider, HowItWorks, Products, SiteFooter, SiteHeader, Voices, useTheme } from "./Landing";
-import { tr, useUi } from "./i18n";
+import { t, tr, useUi } from "./i18n";
 import { getStatus, transcribe, type Status } from "./api";
 
 const STYLES: { id: OutputStyle; label: string; note: string }[] = [
@@ -627,7 +627,7 @@ export default function App() {
             </span>
           </label>
           <button className="link" onClick={() => setShowWords((v) => !v)} aria-expanded={showWords}>
-            My words{rules.length ? ` (${rules.length})` : ""} {showWords ? "▴" : "▾"}
+            {tr("My words")}{rules.length ? ` (${rules.length})` : ""} {showWords ? "▴" : "▾"}
           </button>
         </div>
         {showWords && (
@@ -657,7 +657,7 @@ export default function App() {
       <section className="card output">
         <div className="output-head">
           <h2>{tr("Text")}</h2>
-          <span className="count">{text.trim() ? text.trim().split(/\s+/).length : 0} words</span>
+          <span className="count">{(() => { const n = text.trim() ? text.trim().split(/\s+/).length : 0; return t(`${n} words`, `${n} சொற்கள்`); })()}</span>
         </div>
         <textarea
           dir="auto"
@@ -732,7 +732,7 @@ export default function App() {
       />
       </main>
       <p className="privacy-line">
-        No account. Your saved texts stay only in your own browser.
+        {tr("No account. Your saved texts stay only in your own browser.")}
         {SANSA_ENGINE_URL ? tr(" Tamil audio is sent to our own server only to convert it, and is not saved.") : ""}
       </p>
     </div>
