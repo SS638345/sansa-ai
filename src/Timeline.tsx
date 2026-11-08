@@ -21,6 +21,7 @@ export function Timeline({ segments, mediaUrl, kind }: { segments: Segment[]; me
     return () => URL.revokeObjectURL(url);
   }, [vtt]);
   const listRef = useRef<HTMLOListElement>(null);
+  const checks = segments.filter((s) => s.check).length;
   const [now, setNow] = useState(-1);
 
   const active = segments.findIndex((s, i) => now >= s.start && (now < s.end || (i === segments.length - 1 && now <= s.end + 0.5)));
@@ -48,7 +49,10 @@ export function Timeline({ segments, mediaUrl, kind }: { segments: Segment[]; me
     <div className="timeline">
       <div className="timeline-head">
         <h3>Timeline</h3>
-        <span className="count">{segments.length} lines · tap a line to play from there</span>
+        <span className="count">
+          {segments.length} lines · tap a line to play from there
+          {checks > 0 && <b className="check-count"> · {checks} to check</b>}
+        </span>
       </div>
       {audioUrl && kind === "video" ? (
         <video
@@ -79,9 +83,18 @@ export function Timeline({ segments, mediaUrl, kind }: { segments: Segment[]; me
       <ol ref={listRef} className="lines">
         {segments.map((s, i) => (
           <li key={i}>
-            <button className={i === active ? "on" : ""} onClick={() => seek(s)} disabled={!audioUrl} aria-current={i === active}>
+            <button
+              className={[i === active ? "on" : "", s.check ? "check" : ""].join(" ").trim() || undefined}
+              onClick={() => seek(s)}
+              disabled={!audioUrl}
+              aria-current={i === active}
+              title={s.check ? "The engine was not sure about this line. Listen and fix it in the text above." : undefined}
+            >
               <time>{clock(s.start)}</time>
-              <span dir="auto">{s.text}</span>
+              <span dir="auto">
+                {s.text}
+                {s.check && <em className="check-tag">check</em>}
+              </span>
             </button>
           </li>
         ))}

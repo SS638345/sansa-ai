@@ -638,6 +638,12 @@ export default function App() {
           rows={12}
         />
         {live.interim && <p className="interim">{live.interim}</p>}
+        {segments.some((s) => s.check) && (
+          <p className="check-note" role="status">
+            ⚠ {segments.filter((s) => s.check).length} line(s) may have mistakes. They are marked yellow in the Timeline below. Tap one to
+            hear it, then fix the text above. <span lang="ta">மஞ்சள் வரிகளை கேட்டு சரி பண்ணுங்க.</span>
+          </p>
+        )}
         {segments.length > 0 && <Timeline segments={segments} mediaUrl={audioUrl} kind={media?.kind ?? "audio"} />}
         {notice && <p className="notice">{notice}</p>}
         <div className="row">

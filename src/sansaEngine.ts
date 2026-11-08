@@ -48,13 +48,13 @@ export async function transcribeWithSansa(
       await new Promise((r) => setTimeout(r, 15000));
     }
     if (!res) throw new Error("Could not reach the SANSA engine. It may be starting up; try again in a minute.");
-    const data = (await res.json().catch(() => ({}))) as { transcript?: string; detail?: string };
+    const data = (await res.json().catch(() => ({}))) as { transcript?: string; detail?: string; check?: boolean };
     if (res.status === 400 && i === 0 && /not available/i.test(data.detail ?? "")) {
       throw new SansaLanguageUnavailable(data.detail);
     }
     if (!res.ok) throw new Error(data.detail ?? `SANSA engine error (${res.status}).`);
     const text = (data.transcript ?? "").trim();
-    if (text) segments.push({ start: offsets[i], end: offsets[i] + pieces[i].length / 16000, text });
+    if (text) segments.push({ start: offsets[i], end: offsets[i] + pieces[i].length / 16000, text, ...(data.check ? { check: true } : {}) });
   }
   onProgress(pieces.length, pieces.length);
   return { text: segments.map((s) => s.text).join(" "), segments };

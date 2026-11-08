@@ -6,7 +6,8 @@ import { toCodemix } from "./codemix";
  */
 
 /** One timed piece of the transcript, times in seconds from the start of the audio. */
-export type Segment = { start: number; end: number; text: string };
+/** `check`: the engine was unsure about this piece, so the app asks the user to listen and fix it. */
+export type Segment = { start: number; end: number; text: string; check?: boolean };
 
 /** Engine result: the full text plus timed pieces (empty when the engine gives no times). */
 export type Transcript = { text: string; segments: Segment[] };
