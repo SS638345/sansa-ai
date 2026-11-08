@@ -822,6 +822,7 @@ export function Hero() {
             value={text}
             onChange={(e) => setText(e.target.value)}
             aria-label={tr("Text to hear")}
+            maxLength={500}
             lang={h.lang}
             placeholder={tr("Type anything to hear it")}
           />
@@ -1010,7 +1011,8 @@ export function Voices() {
 /* ------------------------------------------------------------------ long text -> one MP3 (A6) */
 
 const LONG_MAX = 10000;
-const PART_MAX = 1400; // the voice engine takes up to 1500 characters per request
+// Each request must finish inside Cloudflare's 100 s limit (error 524); ~600 characters takes 25-45 s on the home server.
+const PART_MAX = 600;
 
 /**
  * Split at sentence ends (then commas / spaces) into parts the engine accepts.
