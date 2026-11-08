@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { tr } from "./i18n";
 import type { LibraryItem } from "./libraryStore";
 
 /** Saved conversions on this device: search, open, rename, delete. */
@@ -25,21 +26,21 @@ export function Library({
     <section className="card library">
       <button className="library-toggle" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
         <span>
-          <b>My library</b> <small>{items.length ? `${items.length} saved on this device` : "every conversion is saved here"}</small>
+          <b>{tr("My library")}</b> <small>{items.length ? tr("{n} saved on this device").replace("{n}", String(items.length)) : tr("every conversion is saved here")}</small>
         </span>
         <span aria-hidden="true">{open ? "▴" : "▾"}</span>
       </button>
       {open && (
         <>
           {items.length > 3 && (
-            <input type="search" className="search" placeholder="Search your transcripts" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <input type="search" className="search" placeholder={tr("Search your transcripts")} value={query} onChange={(e) => setQuery(e.target.value)} />
           )}
-          {!items.length && <p className="hint left">Upload or record something and it will be kept here, only in this browser.</p>}
+          {!items.length && <p className="hint left">{tr("Upload or record something and it will be kept here, only in this browser.")}</p>}
           <ul className="items">
             {shown.map((item) => (
               <li key={item.id} className={item.id === currentId ? "on" : ""}>
                 <button className="item-main" onClick={() => onOpen(item)}>
-                  <span className="item-title" dir="auto">{item.title}</span>
+                  <span className="item-title" dir="auto">{tr(item.title)}</span>
                   <small>
                     {fmt.format(item.createdAt)} · {item.text.split(/\s+/).filter(Boolean).length} words
                     {item.segments.length ? " · subtitles" : ""}
@@ -48,8 +49,8 @@ export function Library({
                 </button>
                 <button
                   className="icon"
-                  title="Rename"
-                  aria-label={`Rename ${item.title}`}
+                  title={tr("Rename")}
+                  aria-label={`Rename ${tr(item.title)}`}
                   onClick={() => {
                     const t = window.prompt("New name", item.title);
                     if (t?.trim()) onRename(item, t.trim());
@@ -59,10 +60,10 @@ export function Library({
                 </button>
                 <button
                   className="icon"
-                  title="Delete"
-                  aria-label={`Delete ${item.title}`}
+                  title={tr("Delete")}
+                  aria-label={`Delete ${tr(item.title)}`}
                   onClick={() => {
-                    if (window.confirm(`Delete "${item.title}"? This cannot be undone.`)) onDelete(item);
+                    if (window.confirm(`Delete "${tr(item.title)}"? This cannot be undone.`)) onDelete(item);
                   }}
                 >
                   🗑

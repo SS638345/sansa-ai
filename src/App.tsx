@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { getStatus, transcribe, type Status } from "./api";
 import { liveDictationSupported, useLiveDictation } from "./hooks/useLiveDictation";
 import { useVoiceRecorder } from "./hooks/useVoiceRecorder";
 import { LOCAL_MODELS, TAMIL_MODEL, transcribeLocally, type LocalProgress } from "./localWhisper";
@@ -12,6 +11,10 @@ import { deleteItem, listItems, renameItem, saveItem, titleFrom, type LibraryIte
 import { readAloudSupported, speak, voiceFor, voicesReady } from "./readAloud";
 import { Library } from "./Library";
 import { Agents, Api, Cleanup, Clone, Cta, Faq, Hero, HomeProvider, HowItWorks, Products, SiteFooter, SiteHeader, Voices, useTheme } from "./Landing";
+import { t, tr, useUi } from "./i18n";
+import { tanglishToTamil } from "./translit";
+import { printAsPdf, shareToWhatsApp, toDocx } from "./exportDoc";
+import { getStatus, transcribe, type Status } from "./api";
 
 const STYLES: { id: OutputStyle; label: string; note: string }[] = [
   { id: "native", label: "As spoken", note: "same language" },
@@ -69,27 +72,28 @@ function save(key: string, value: string) {
 const FAQ: { q: string; a: string }[] = [
   {
     q: "Which languages are supported?",
-    a: "SANSA currently supports English and Tamil for speech generation, transcription and dubbing.",
+    a: "Voice to text works in Tamil, English and 15+ Indian languages. The AI voices speak Tamil and English.",
   },
   {
-    q: "Can I use the audio commercially?",
-    a: "Yes. Audio created on paid plans can be used in commercial projects, including ads, videos and apps.",
+    q: "Is my audio saved?",
+    a: "No. Audio is converted on our own server in India or on your device, and is not saved. Your texts stay only in your browser.",
   },
   {
     q: "How does voice cloning work?",
-    a: "Record or upload a short sample of your voice. SANSA creates a private voice you can use in the studio and through the API.",
+    a: "Voice cloning is coming soon. Today you can record a short sample on this page and play it back.",
   },
   {
-    q: "Is there a free plan?",
-    a: "Yes. You can sign up free and try every tool before upgrading.",
+    q: "Is it free?",
+    a: "Yes. Every tool on this site is free and needs no sign up.",
   },
   {
-    q: "Can I cancel anytime?",
-    a: "Yes. You can cancel or change your plan at any time from your account settings.",
+    q: "How do I convert a WhatsApp voice note?",
+    a: "Upload the voice note, or on Android add this site to your home screen and use Share > Sansa Voice from WhatsApp.",
   },
 ];
 
 export default function App() {
+  useUi(); // re-render the whole page when the site language changes
   const [langId, setLangId] = useState(() => load("vtt.lang", "ta-IN"));
   const lang = LANGUAGES.find((l) => l.id === langId) ?? LANGUAGES[0];
   const [mode, setMode] = useState<Mode>(liveDictationSupported ? "live" : "record");
@@ -107,11 +111,13 @@ export default function App() {
     const e = load("vtt.engine", SANSA_ENGINE_URL ? "sansa" : "free");
     // Without an engine address, SANSA engine would just fall back; start on the on-device engine.
     if (e === "sansa" && !SANSA_ENGINE_URL && !load("vtt.engineUrl", "")) return "free";
+    // sansaai.in runs its own engine: no outside services or API keys, so an old "sarvam" choice moves to it.
+    if (SANSA_ENGINE_URL && e === "sarvam") return "sansa";
     return e === "sansa" || e === "sarvam" ? e : "free";
   });
   const [engineUrl, setEngineUrl] = useState(() => load("vtt.engineUrl", ""));
   const [sarvamKey, setSarvamKey] = useState(() => load("vtt.sarvamKey", ""));
-  const [pieces, setPieces] = useState<{ done: number; total: number } | null>(null);
+  const [pieces, setPieces] = useState<{ done: number; total: number; left?: number; resumed?: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [style, setStyle] = useState<OutputStyle>(() => {
@@ -169,7 +175,7 @@ export default function App() {
   useEffect(() => () => stopSpeaking?.(), [stopSpeaking]);
 
   const rules = parseMyWords(myWords);
-  const finish = (t: Transcript) => polish(t, { clean, rules, codemix: localCodemix });
+  const finish = (t: Transcript) => polish(t, { clean, rules, codemix: localCodemix, tanglish: localTanglish });
 
   const append = (chunk: string) => {
     if (!chunk) return;
@@ -204,7 +210,8 @@ export default function App() {
   // free translate, Mixed puts English words back in English on this device (src/codemix.ts),
   // and Tanglish is not available yet, so text stays as spoken.
   const localCodemix = style === "codemix" && !useSarvam;
-  const styleNeedsSarvam = style === "roman" && !useSarvam;
+  // Tanglish: written on this device from the Tamil text (src/translit.ts), no API needed
+  const localTanglish = style === "roman" && !useSarvam;
   const translateLocally = style === "english" && !useSarvam;
 
   const runTranscribe = async (audio: Blob, name?: string) => {
@@ -230,7 +237,13 @@ export default function App() {
       const raw: Transcript = translateLocally
         ? await local()
         : useSansa
-        ? await transcribeWithSansa(input, lang.id, sansaUrl!, (done, total) => setPieces({ done, total })).catch((e) => {
+        ? await transcribeWithSansa(
+            input,
+            lang.id,
+            sansaUrl!,
+            (done, total, left, resumed) => setPieces({ done, total, left, resumed }),
+            name ? `${name}|${audio.size}|${lang.id}|${denoise ? 1 : 0}` : undefined,
+          ).catch((e) => {
             // Engine has no model for this language yet: fall back to the free on-device engine.
             if (!(e instanceof SansaLanguageUnavailable)) throw e;
             setPieces(null);
@@ -250,7 +263,7 @@ export default function App() {
           : await local();
       const out = finish(raw);
       if (!out.text) {
-        setError("No speech found in this audio.");
+        setError(tr("No speech found in this audio."));
         return;
       }
       append(out.text);
@@ -290,16 +303,17 @@ export default function App() {
     try {
       await recorder.start();
     } catch {
-      setError("Could not open the microphone. Allow mic access and try again.");
+      setError(tr("Could not open the microphone. Allow mic access and try again."));
     }
   };
 
   const onFile = async (file: File | undefined) => {
     if (!file) return;
     const isVideo = file.type.startsWith("video/") || /\.(mp4|mov|mkv|m4v)$/i.test(file.name);
-    const maxMb = isVideo ? 300 : 25;
+    // Our own Tamil engine takes long recordings (up to about an hour); on-device models stay at 25 MB.
+    const maxMb = isVideo ? 300 : useSansa ? 200 : 25;
     if (file.size > maxMb * 1024 * 1024) {
-      setError(`File is too big. Max ${maxMb} MB for ${isVideo ? "video" : "audio"}.`);
+      setError(t(`File is too big. Max ${maxMb} MB for ${isVideo ? "video" : "audio"}.`, `File மிகப் பெரியது. ${isVideo ? "Video" : "Audio"}-க்கு அதிகபட்சம் ${maxMb} MB.`));
       return;
     }
     // Some phones leave the type empty for .mov/.mkv; mark it so the timeline shows a video player.
@@ -314,7 +328,7 @@ export default function App() {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      setError("Copy failed. Select the text and copy manually.");
+      setError(tr("Copy failed. Select the text and copy manually."));
     }
   };
 
@@ -326,6 +340,30 @@ export default function App() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  // A file shared from another app (Android share sheet → sw.js) is waiting: convert it right away.
+  const sharedDone = useRef(false);
+  useEffect(() => {
+    if (sharedDone.current || !new URLSearchParams(location.search).has("shared")) return;
+    sharedDone.current = true;
+    history.replaceState(null, "", location.pathname + location.hash);
+    void (async () => {
+      try {
+        const cache = await caches.open("sansa-share");
+        const res = await cache.match("shared-file");
+        if (!res) return;
+        await cache.delete("shared-file");
+        const name = decodeURIComponent(res.headers.get("X-Name") ?? "shared-audio");
+        const file = new File([await res.blob()], name, { type: res.headers.get("Content-Type") ?? "" });
+        setMode("upload");
+        document.getElementById("app")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        await onFile(file);
+      } catch {
+        setError(tr("Could not open the shared file. Use Upload audio instead."));
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const switchMode = (m: Mode) => {
     live.stop();
@@ -376,8 +414,15 @@ export default function App() {
     ? `Cleaning background noise… ${Math.round(cleaning * 100)}%`
     : pieces
     ? pieces.total > 1
-      ? `${useSansa ? "SANSA engine" : "Sarvam AI"}: converting part ${Math.min(pieces.done + 1, pieces.total)} of ${pieces.total}…`
-      : `${useSansa ? "SANSA engine" : "Sarvam AI"}: converting…`
+      ? (() => {
+          const eng = useSansa ? "SANSA engine" : "Sarvam AI";
+          const part = Math.min(pieces.done + 1, pieces.total);
+          const m = pieces.left != null ? Math.max(1, Math.round(pieces.left / 60)) : null;
+          const left = m == null ? "" : t(` · about ${m} min left`, ` · சுமார் ${m} நிமிடம் மீதம்`);
+          const resumed = pieces.resumed ? t(` · continued from part ${pieces.resumed + 1}`, ` · பகுதி ${pieces.resumed + 1}-இல் இருந்து தொடர்கிறது`) : "";
+          return t(`${eng}: converting part ${part} of ${pieces.total}…`, `${eng}: பகுதி ${part} / ${pieces.total} மாற்றுகிறது…`) + left + resumed;
+        })()
+      : t(`${useSansa ? "SANSA engine" : "Sarvam AI"}: converting…`, `${useSansa ? "SANSA engine" : "Sarvam AI"}: மாற்றுகிறது…`)
     : progress?.stage === "decoding"
       ? "Reading audio…"
       : progress?.stage === "loading"
@@ -397,11 +442,11 @@ export default function App() {
     <div className="page" id="app">
       <div className="app-head">
         <div>
-          <span className="eyebrow at">Voice to text</span>
-          <h2>Try it now.</h2>
+          <span className="eyebrow at">{tr("Voice to text")}</span>
+          <h2>{tr("Try it now.")}</h2>
         </div>
         <span className={`pill ${status.ai || SANSA_ENGINE_URL ? "ok" : ""}`}>
-          {SANSA_ENGINE_URL ? "Tamil engine on" : status.ai ? "AI on" : "Free mode"}
+          {SANSA_ENGINE_URL ? tr("Tamil engine on") : status.ai ? tr("AI on") : tr("Free mode")}
         </span>
       </div>
 
@@ -409,11 +454,11 @@ export default function App() {
 
       <section className="card controls">
         <label className="field">
-          <span>Language</span>
+          <span>{tr("Language")}</span>
           <select value={langId} onChange={(e) => setLangId(e.target.value)} disabled={live.listening || busy}>
             {LANGUAGES.map((l) => (
               <option key={l.id} value={l.id}>
-                {l.label}
+                {tr(l.label)}
               </option>
             ))}
           </select>
@@ -421,13 +466,13 @@ export default function App() {
 
         <div className="tabs" role="tablist">
           <button role="tab" aria-selected={mode === "live"} onClick={() => switchMode("live")}>
-            Live mic <small>free</small>
+            {tr("Live mic")} <small>{tr("free")}</small>
           </button>
           <button role="tab" aria-selected={mode === "record"} onClick={() => switchMode("record")}>
-            Record &amp; convert <small>{status.ai ? "AI" : "free"}</small>
+            {tr("Record & convert")} <small>{status.ai ? "AI" : tr("free")}</small>
           </button>
           <button role="tab" aria-selected={mode === "upload"} onClick={() => switchMode("upload")}>
-            Upload audio <small>{status.ai ? "AI" : "free"}</small>
+            {tr("Upload audio")} <small>{status.ai ? "AI" : tr("free")}</small>
           </button>
         </div>
 
@@ -440,14 +485,14 @@ export default function App() {
                   onClick={live.listening ? live.stop : live.start}
                   aria-pressed={live.listening}
                 >
-                  {live.listening ? "■ Stop" : "● Start speaking"}
+                  {live.listening ? tr("■ Stop") : tr("● Start speaking")}
                 </button>
                 <p className="hint">
-                  {live.listening ? "Listening… text appears as you speak." : "Words appear live while you talk. Works best in Chrome."}
+                  {live.listening ? tr("Listening… text appears as you speak.") : tr("Words appear live while you talk. Works best in Chrome.")}
                 </p>
               </>
             ) : (
-              <p className="hint">This browser has no live speech engine. Open in Chrome, or use Record &amp; convert.</p>
+              <p className="hint">{tr("This browser has no live speech engine. Open in Chrome, or use Record & convert.")}</p>
             )}
           </div>
         )}
@@ -461,7 +506,7 @@ export default function App() {
             >
               {busy ? "Working…" : recorder.state === "recording" ? "■ Stop & convert" : "● Record"}
             </button>
-            <p className="hint">Record first, then the whole clip is converted. More accurate for long talks.</p>
+            <p className="hint">{tr("Record first, then the whole clip is converted. More accurate for long talks.")}</p>
           </div>
         )}
 
@@ -478,24 +523,25 @@ export default function App() {
               {busy ? "Working…" : "Choose audio or video"}
             </label>
             <p className="hint">
-              Any audio: mp3, m4a, wav, ogg, opus, amr, aac, flac, wma, 3gp, WhatsApp voice notes, call recordings (max 25 MB), or mp4/webm video for subtitles (max 300 MB). First time, the speech
-              model downloads once.
+              {useSansa ? tr("Any audio: mp3, m4a, wav, ogg, opus, amr, aac, WhatsApp voice notes and call recordings, up to about 1 hour (200 MB). Long recordings show the time left and continue where they stopped if the page closes. Video for subtitles up to 300 MB.") : tr("Any audio: mp3, m4a, wav, ogg, opus, amr, aac, flac, wma, 3gp, WhatsApp voice notes, call recordings (max 25 MB), or mp4/webm video for subtitles (max 300 MB). First time, the speech model downloads once.")}
             </p>
           </div>
         )}
 
         {mode !== "live" && (
           <div className="field">
-            <span>Speech engine</span>
-            <div className="tabs" role="radiogroup">
+            <span>{tr("Speech engine")}</span>
+            <div className={SANSA_ENGINE_URL ? "tabs two" : "tabs"} role="radiogroup">
               <button role="radio" aria-checked={engine === "sansa"} aria-selected={engine === "sansa"} onClick={() => setEngine("sansa")} disabled={busy}>
-                SANSA engine <small>free, accurate</small>
+                {tr("SANSA engine")} <small>{tr("free, accurate")}</small>
               </button>
-              <button role="radio" aria-checked={engine === "sarvam"} aria-selected={engine === "sarvam"} onClick={() => setEngine("sarvam")} disabled={busy}>
-                Sarvam AI <small>needs key</small>
-              </button>
+              {!SANSA_ENGINE_URL && (
+                <button role="radio" aria-checked={engine === "sarvam"} aria-selected={engine === "sarvam"} onClick={() => setEngine("sarvam")} disabled={busy}>
+                  Sarvam AI <small>needs key</small>
+                </button>
+              )}
               <button role="radio" aria-checked={engine === "free"} aria-selected={engine === "free"} onClick={() => setEngine("free")} disabled={busy}>
-                On-device <small>free, offline</small>
+                {tr("On-device")} <small>{tr("free, offline")}</small>
               </button>
             </div>
           </div>
@@ -540,15 +586,15 @@ export default function App() {
           </p>
         )}
         {mode !== "live" && !useSarvam && !useSansa && lang.api === null && (
-          <p className="notice">This language works only with Live mic. Upload and record are not available for it yet.</p>
+          <p className="notice">{tr("This language works only with Live mic. Upload and record are not available for it yet.")}</p>
         )}
         {mode !== "live" && !status.ai && !useSarvam && !useSansa && (
           <label className="field">
-            <span>Speech model (runs free on your device, downloads once)</span>
+            <span>{tr("Speech model (runs free on your device, downloads once)")}</span>
             <select value={localModel} onChange={(e) => setLocalModel(e.target.value)} disabled={busy}>
               {modelChoices.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.label}
+                  {tr(m.label)}
                 </option>
               ))}
             </select>
@@ -556,7 +602,7 @@ export default function App() {
         )}
         {mode !== "live" && (
           <div className="field">
-            <span>Write the text as</span>
+            <span>{tr("Write the text as")}</span>
             <div className="tabs four" role="radiogroup">
               {STYLES.map((x) => (
                 <button
@@ -567,16 +613,11 @@ export default function App() {
                   onClick={() => setStyle(x.id)}
                   disabled={busy}
                 >
-                  {x.label} <small>{x.note}</small>
+                  {tr(x.label)} <small>{tr(x.note)}</small>
                 </button>
               ))}
             </div>
           </div>
-        )}
-        {mode !== "live" && styleNeedsSarvam && (
-          <p className="notice">
-            Tanglish output needs the Sarvam AI engine for now. Until then the text is written as spoken. Try Mixed: it writes English words in English, free on this device.
-          </p>
         )}
         {mode !== "live" && translateLocally && engine !== "free" && (
           <p className="notice">English translation runs free on this device with Whisper{engine === "sarvam" ? " until a Sarvam key is added" : ""}.</p>
@@ -587,24 +628,24 @@ export default function App() {
             <label className="check">
               <input type="checkbox" checked={denoise} onChange={(e) => setDenoise(e.target.checked)} disabled={busy} />
               <span>
-                Clean background noise <small>fan, traffic, crowd. Free, on this device</small>
+                {tr("Clean background noise")} <small>{tr("fan, traffic, crowd. Free, on this device")}</small>
               </span>
             </label>
           )}
           <label className="check">
             <input type="checkbox" checked={clean} onChange={(e) => setClean(e.target.checked)} />
             <span>
-              Clean mode <small>removes umm, uh, ம்ம் and tidies punctuation</small>
+              {tr("Clean mode")} <small>{tr("removes umm, uh, ம்ம் and tidies punctuation")}</small>
             </span>
           </label>
           <button className="link" onClick={() => setShowWords((v) => !v)} aria-expanded={showWords}>
-            My words{rules.length ? ` (${rules.length})` : ""} {showWords ? "▴" : "▾"}
+            {tr("My words")}{rules.length ? ` (${rules.length})` : ""} {showWords ? "▴" : "▾"}
           </button>
         </div>
         {showWords && (
           <label className="field">
             <span>
-              Names and words SANSA should spell right, one per line. Write <code>wrong = Right</code> to fix a common mistake.
+              {tr("Names and words SANSA should spell right, one per line. Write")} <code>wrong = Right</code> {tr("to fix a common mistake.")}
             </span>
             <textarea
               className="small"
@@ -627,48 +668,86 @@ export default function App() {
 
       <section className="card output">
         <div className="output-head">
-          <h2>Text</h2>
-          <span className="count">{text.trim() ? text.trim().split(/\s+/).length : 0} words</span>
+          <h2>{tr("Text")}</h2>
+          <span className="count">{(() => { const n = text.trim() ? text.trim().split(/\s+/).length : 0; return t(`${n} words`, `${n} சொற்கள்`); })()}</span>
         </div>
         <textarea
           dir="auto"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Your text will appear here. You can edit it too."
+          placeholder={tr("Your text will appear here. You can edit it too.")}
           rows={12}
         />
         {live.interim && <p className="interim">{live.interim}</p>}
+        {segments.some((s) => s.check) && (
+          <p className="check-note" role="status">
+            {tr(
+              "⚠ {n} line(s) may have mistakes. They are marked yellow in the Timeline below. Tap one to hear it, then fix the text above.",
+            ).replace("{n}", String(segments.filter((s) => s.check).length))}
+          </p>
+        )}
         {segments.length > 0 && <Timeline segments={segments} mediaUrl={audioUrl} kind={media?.kind ?? "audio"} />}
         {notice && <p className="notice">{notice}</p>}
         <div className="row">
           <button onClick={copy} disabled={!text}>
-            {copied ? "Copied ✓" : "Copy"}
+            {copied ? tr("Copied ✓") : tr("Copy")}
           </button>
           <button onClick={() => download(text, "txt")} disabled={!text}>
-            Download .txt
+            {tr("Download .txt")}
           </button>
+          <button
+            onClick={() => {
+              const name = `sansa-voice-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, "-")}.docx`;
+              const a = document.createElement("a");
+              a.href = URL.createObjectURL(toDocx(text, tr("Sansa Voice text")));
+              a.download = name;
+              a.click();
+              setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+            }}
+            disabled={!text}
+            title={tr("Download as a Word document")}
+          >
+            Word
+          </button>
+          <button
+            onClick={() => {
+              if (!printAsPdf(text, tr("Sansa Voice text"))) setNotice(tr("Allow pop-ups for this site to save as PDF."));
+            }}
+            disabled={!text}
+            title={tr("Opens a print page: choose Save as PDF")}
+          >
+            PDF
+          </button>
+          <button onClick={() => void shareToWhatsApp(text)} disabled={!text} title={tr("Share the text on WhatsApp")}>
+            WhatsApp
+          </button>
+          {/[A-Za-z]{3,}/.test(text) && (
+            <button onClick={() => setText(tanglishToTamil(text))} title={tr("Turn Tanglish typed in English letters into Tamil letters")}>
+              {tr("Tanglish → தமிழ்")}
+            </button>
+          )}
           {readAloudSupported && (
             <span className="read">
               <button onClick={() => void toggleRead()} disabled={!text && !stopSpeaking} aria-pressed={Boolean(stopSpeaking)}>
-                {stopSpeaking ? "■ Stop reading" : "🔊 Read aloud"}
+                {stopSpeaking ? tr("■ Stop reading") : tr("🔊 Read aloud")}
               </button>
-              <select value={readRate} onChange={(e) => setReadRate(Number(e.target.value))} aria-label="Reading speed">
-                <option value={0.8}>Slow</option>
-                <option value={1}>Normal</option>
-                <option value={1.25}>Fast</option>
+              <select value={readRate} onChange={(e) => setReadRate(Number(e.target.value))} aria-label={tr("Reading speed")}>
+                <option value={0.8}>{tr("Slow")}</option>
+                <option value={1}>{tr("Normal")}</option>
+                <option value={1.25}>{tr("Fast")}</option>
               </select>
             </span>
           )}
           {segments.length > 0 && (
             <>
-              <button onClick={() => download(toSrt(segments), "srt")} title="Subtitles for YouTube, Instagram, video editors">
-                Subtitles .srt
+              <button onClick={() => download(toSrt(segments), "srt")} title={tr("Subtitles for YouTube, Instagram, video editors")}>
+                {tr("Subtitles .srt")}
               </button>
-              <button onClick={() => download(toVtt(segments), "vtt")} title="Subtitles for web video">
+              <button onClick={() => download(toVtt(segments), "vtt")} title={tr("Subtitles for web video")}>
                 .vtt
               </button>
-              <button onClick={() => download(toTimedText(segments), "txt")} title="Text with a time before each line">
-                Text with times
+              <button onClick={() => download(toTimedText(segments), "txt")} title={tr("Text with a time before each line")}>
+                {tr("Text with times")}
               </button>
             </>
           )}
@@ -682,7 +761,7 @@ export default function App() {
             }}
             disabled={!text && !segments.length}
           >
-            Clear
+            {tr("Clear")}
           </button>
         </div>
       </section>
@@ -696,8 +775,8 @@ export default function App() {
       />
       </main>
       <p className="privacy-line">
-        No account. Your saved texts stay only in your own browser.
-        {SANSA_ENGINE_URL ? " Tamil audio is sent to our own server only to convert it, and is not saved." : ""}
+        {tr("No account. Your saved texts stay only in your own browser.")}
+        {SANSA_ENGINE_URL ? tr(" Tamil audio is sent to our own server only to convert it, and is not saved.") : ""}
       </p>
     </div>
 

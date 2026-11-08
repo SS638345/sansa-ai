@@ -2,7 +2,7 @@
  * SANSA home page (Claude Design "SANSA Home", 2026-11-08).
  * Header with ⌘K search, 3D orb hero, products, voices, voice cloning sample, live agent,
  * developer API, FAQ, CTA and footer. Everything on the page works today; features that are
- * not live yet are labelled "Coming soon" instead of being faked.
+ * not live yet are labelled tr("Coming soon") instead of being faked.
  */
 import {
   createContext,
@@ -16,6 +16,7 @@ import {
 } from "react";
 import { readAloudSupported, voiceFor, voicesReady } from "./readAloud";
 import { think, type Reply } from "./agentBrain";
+import { setUi, t, tr, useUi } from "./i18n";
 
 type Theme = "light" | "dark";
 type Lang = "en" | "ta";
@@ -458,6 +459,7 @@ const SearchIcon = () => (
 
 export function SiteHeader() {
   const h = useHome();
+  const ui = useUi();
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   const [menu, setMenu] = useState(false);
   useEffect(() => {
@@ -475,29 +477,38 @@ export function SiteHeader() {
           SANSA
         </a>
         <div className="site-links">
-          <a href="#tools">Products</a>
-          <a href="#voices">Text to Speech</a>
-          <a href="#voices">Voices</a>
-          <a href="#api">API</a>
+          <a href="#tools">{tr("Products")}</a>
+          <a href="#voices">{tr("Text to Speech")}</a>
+          <a href="#voices">{tr("Voices")}</a>
+          <a href="#api">{tr("API")}</a>
         </div>
-        <button className="search-btn" onClick={h.openPal} aria-label="Search">
+        <button className="search-btn" onClick={h.openPal} aria-label={tr("Search")}>
           <SearchIcon />
-          <span className="search-word">Search</span>
+          <span className="search-word">{tr("Search")}</span>
           <kbd>{mac ? "⌘K" : "Ctrl K"}</kbd>
         </button>
         <a className="nav-login" href={LOGIN}>
-          Log in
+          {tr("Log in")}
         </a>
         <a className="btn-dark" href={SIGNUP}>
-          Sign up
+          {tr("Sign up")}
         </a>
-        <button className="theme-btn" onClick={h.toggleTheme} title="Switch light / dark" aria-label="Switch light / dark">
+        <button
+          className="lang-btn"
+          onClick={() => setUi(ui === "ta" ? "en" : "ta")}
+          title={tr("Site language")}
+          aria-label={ui === "ta" ? "Switch the site to English" : "தளத்தை தமிழுக்கு மாற்று"}
+          lang={ui === "ta" ? "en" : "ta"}
+        >
+          {ui === "ta" ? "EN" : "தமிழ்"}
+        </button>
+        <button className="theme-btn" onClick={h.toggleTheme} title={tr("Switch light / dark")} aria-label={tr("Switch light / dark")}>
           {h.theme === "dark" ? "☀" : "☾"}
         </button>
         <button
           className="menu-btn"
           onClick={() => setMenu((m) => !m)}
-          aria-label={menu ? "Close menu" : "Open menu"}
+          aria-label={menu ? tr("Close menu") : tr("Open menu")}
           aria-expanded={menu}
           aria-controls="mobile-menu"
         >
@@ -507,29 +518,29 @@ export function SiteHeader() {
       {menu && (
         <div className="mobile-menu" id="mobile-menu">
           <a href="#tools" onClick={close}>
-            Products
+            {tr("Products")}
           </a>
           <a href="#app" onClick={close}>
-            Speech to Text
+            {tr("Speech to Text")}
           </a>
           <a href="#voices" onClick={close}>
-            Text to Speech
+            {tr("Text to Speech")}
           </a>
           <a href="#voices" onClick={close}>
-            Voices
+            {tr("Voices")}
           </a>
           <a href="#api" onClick={close}>
-            API
+            {tr("API")}
           </a>
           <a href="#faq" onClick={close}>
-            FAQ
+            {tr("FAQ")}
           </a>
           <div className="mobile-menu-actions">
             <a className="btn-outline" href={LOGIN}>
-              Log in
+              {tr("Log in")}
             </a>
             <a className="btn-dark" href={SIGNUP}>
-              Sign up
+              {tr("Sign up")}
             </a>
           </div>
         </div>
@@ -795,14 +806,14 @@ export function Hero() {
     setNote(null);
   };
   const onSpeak = async () => setNote(await h.play("hero", text, cur));
-  const label = h.loadingId === "hero" ? "… Creating" : h.playing === "hero" ? "■ Stop" : "▶ Speak";
+  const label = h.loadingId === "hero" ? tr("… Creating") : h.playing === "hero" ? tr("■ Stop") : tr("▶ Speak");
 
   return (
     <section className="hero2">
       <div className="hero2-copy fade-ui">
-        <span className="eyebrow">AI Voice Platform</span>
-        <h1>Lifelike AI voices in English and Tamil.</h1>
-        <p className="hero2-sub">Text to speech, speech to text, voice cloning and dubbing — in one studio and one API.</p>
+        <span className="eyebrow">{tr("AI Voice Platform")}</span>
+        <h1>{tr("Lifelike AI voices in English and Tamil.")}</h1>
+        <p className="hero2-sub">{tr("Text to speech, speech to text and noise cleanup in Tamil and English. Free, no sign up needed.")}</p>
       </div>
       <Orb />
       <div className="hero2-bar-wrap fade-ui">
@@ -810,11 +821,12 @@ export function Hero() {
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
-            aria-label="Text to hear"
+            aria-label={tr("Text to hear")}
+            maxLength={500}
             lang={h.lang}
-            placeholder="Type anything to hear it"
+            placeholder={tr("Type anything to hear it")}
           />
-          <div className="seg" role="radiogroup" aria-label="Language">
+          <div className="seg" role="radiogroup" aria-label={tr("Language")}>
             {(["en", "ta"] as const).map((l) => (
               <button key={l} role="radio" aria-checked={h.lang === l} className={h.lang === l ? "on" : ""} onClick={() => pick(l)}>
                 {l.toUpperCase()}
@@ -826,10 +838,10 @@ export function Hero() {
           </button>
           <button className="btn-ghost" onClick={h.openAgent}>
             <span className="dot" aria-hidden="true" />
-            Talk live
+            {tr("Talk live")}
           </button>
         </div>
-        <div className="voice-chips" role="radiogroup" aria-label="Voice">
+        <div className="voice-chips" role="radiogroup" aria-label={tr("Voice")}>
           {VOICES.map((v) => (
             <button
               key={v.id}
@@ -837,19 +849,19 @@ export function Hero() {
               aria-checked={v.id === h.voice}
               className={v.id === h.voice ? "on" : ""}
               onClick={() => pickVoice(v)}
-              title={v.desc}
+              title={tr(v.desc)}
             >
               <span style={{ background: v.swatch }} aria-hidden="true" />
-              {v.name}
+              {tr(v.name)}
             </button>
           ))}
         </div>
         {(note || h.lastAudio?.id === "hero" || h.loadingId === "hero") && (
           <p className="hero2-note" role="status">
-            {h.loadingId === "hero" ? "Creating your audio… the first one can take up to 20 seconds." : note}
+            {h.loadingId === "hero" ? tr("Creating your audio… the first one can take up to 20 seconds.") : note}
             {h.lastAudio?.id === "hero" && h.loadingId !== "hero" && (
               <a className="dl-link" href={h.lastAudio.url} download={h.lastAudio.name}>
-                ⬇ Download mp3
+                {tr("⬇ Download mp3")}
               </a>
             )}
           </p>
@@ -876,8 +888,8 @@ export function Products() {
   return (
     <section id="tools" className="sec">
       <div className="sec-head">
-        <span className="eyebrow at">Products</span>
-        <h2>Everything you need to create with voice.</h2>
+        <span className="eyebrow at">{tr("Products")}</span>
+        <h2>{tr("Everything you need to create with voice.")}</h2>
       </div>
       <div className="prod-grid">
         {PRODUCTS.map((p, i) => {
@@ -885,17 +897,17 @@ export function Products() {
             <>
               <span className="prod-orb" style={{ background: SW[i % SW.length] }} aria-hidden="true" />
               <span className="prod-name">
-                {p.name} {p.soon ? <em className="soon">Coming soon</em> : <em className="live">Live</em>}
+                {tr(p.name)} {p.soon ? <em className="soon">{tr("Coming soon")}</em> : <em className="live">{tr("Live")}</em>}
               </span>
-              <span className="prod-desc">{p.desc}</span>
+              <span className="prod-desc">{tr(p.desc)}</span>
             </>
           );
           return p.href ? (
-            <a key={p.name} className={p.soon ? "prod soon-card" : "prod"} href={p.href}>
+            <a key={tr(p.name)} className={p.soon ? "prod soon-card" : "prod"} href={p.href}>
               {body}
             </a>
           ) : (
-            <div key={p.name} className="prod soon-card">
+            <div key={tr(p.name)} className="prod soon-card">
               {body}
             </div>
           );
@@ -910,23 +922,23 @@ export function Products() {
 export function HowItWorks() {
   const steps = [
     ["01", "Write", "Type or paste your script in English or Tamil."],
-    ["02", "Choose a voice", "Pick from the library or use your own cloned voice."],
-    ["03", "Adjust", "Set pitch, pace and emotion until it sounds right."],
-    ["04", "Publish", "Download the audio or stream it through the API."],
+    ["02", "Choose a voice", "Pick a Tamil or English voice from the library."],
+    ["03", "Adjust", "Listen, change the words, and play again until it sounds right."],
+    ["04", "Publish", "Download the audio as an mp3."],
   ];
   return (
     <section className="band" aria-labelledby="how">
       <div className="sec">
         <div className="sec-head">
-          <span className="eyebrow at">How it works</span>
-          <h2 id="how">From script to sound in four steps.</h2>
+          <span className="eyebrow at">{tr("How it works")}</span>
+          <h2 id="how">{tr("From script to sound in four steps.")}</h2>
         </div>
         <ol className="steps2">
           {steps.map(([n, t, d]) => (
             <li key={n}>
               <span className="n">{n}</span>
-              <b>{t}</b>
-              <span>{d}</span>
+              <b>{tr(t)}</b>
+              <span>{tr(d)}</span>
             </li>
           ))}
         </ol>
@@ -939,7 +951,7 @@ export function HowItWorks() {
 
 const FILTERS = ["All", "Tamil", "English"];
 const voiceSample = (v: Voice) =>
-  v.lang === "ta" ? `வணக்கம், நான் ${v.name}. இது SANSA-வின் தமிழ் குரல்.` : `Hi, I'm ${v.name}. This is how I sound on SANSA.`;
+  v.lang === "ta" ? `வணக்கம், நான் ${tr(v.name)}. இது SANSA-வின் தமிழ் குரல்.` : `Hi, I'm ${tr(v.name)}. This is how I sound on SANSA.`;
 
 export function Voices() {
   const h = useHome();
@@ -950,17 +962,17 @@ export function Voices() {
     <section id="voices" className="sec">
       <div className="sec-head-row">
         <div className="sec-head">
-          <span className="eyebrow at">Voice library</span>
-          <h2>Hear our voices.</h2>
+          <span className="eyebrow at">{tr("Voice library")}</span>
+          <h2>{tr("Hear our voices.")}</h2>
         </div>
         <a className="at-link" href="#voices">
-          Browse all voices →
+          {tr("Browse all voices →")}
         </a>
       </div>
-      <div className="filters" role="radiogroup" aria-label="Voice language">
+      <div className="filters" role="radiogroup" aria-label={tr("Voice language")}>
         {FILTERS.map((f) => (
           <button key={f} role="radio" aria-checked={filter === f} className={filter === f ? "on" : ""} onClick={() => setFilter(f)}>
-            {f}
+            {tr(f)}
           </button>
         ))}
       </div>
@@ -972,12 +984,12 @@ export function Voices() {
             <div key={v.id} className={on ? "voice-card on" : "voice-card"}>
               <span className={on ? "voice-orb speaking" : "voice-orb"} style={{ background: v.swatch }} aria-hidden="true" />
               <div className="voice-meta">
-                <b>{v.name}</b>
-                <span>{v.desc}</span>
+                <b>{tr(v.name)}</b>
+                <span>{tr(v.desc)}</span>
               </div>
               <button
                 className="play-btn"
-                aria-label={on || busy ? `Stop ${v.name}` : `Play ${v.name}`}
+                aria-label={on || busy ? t(`Stop ${v.name}`, `${tr(v.name)} நிறுத்து`) : t(`Play ${v.name}`, `${tr(v.name)} கேட்க`)}
                 onClick={() => void h.play(v.id, voiceSample(v), v).then(setNote)}
               >
                 {busy ? "…" : on ? "■" : "▶"}
@@ -988,10 +1000,181 @@ export function Voices() {
       </div>
       {(note || (h.loadingId && VOICES.some((v) => v.id === h.loadingId))) && (
         <p className="sec-note" role="status">
-          {h.loadingId && VOICES.some((v) => v.id === h.loadingId) ? "Creating audio… switching between Tamil and English can take up to 20 seconds." : note}
+          {h.loadingId && VOICES.some((v) => v.id === h.loadingId) ? tr("Creating audio… switching between Tamil and English can take up to 20 seconds.") : note}
         </p>
       )}
+      <LongTts />
     </section>
+  );
+}
+
+/* ------------------------------------------------------------------ long text -> one MP3 (A6) */
+
+const LONG_MAX = 10000;
+// Each request must finish inside Cloudflare's 100 s limit (error 524); ~600 characters takes 25-45 s on the home server.
+const PART_MAX = 600;
+
+/**
+ * Split at sentence ends (then commas / spaces) into parts the engine accepts.
+ * A new part starts whenever the language changes, so English sentences in a Tamil
+ * script are read by the English voice instead of being skipped by the Tamil one.
+ */
+export function splitForTts(text: string, max = PART_MAX): string[] {
+  const sentences = text.replace(/\r/g, "").split(/(?<=[.!?।\n])\s+/).map((s) => s.trim()).filter(Boolean);
+  const parts: string[] = [];
+  let cur = "";
+  let curTa: boolean | null = null;
+  const push = () => {
+    if (cur.trim()) parts.push(cur.trim());
+    cur = "";
+  };
+  for (let s of sentences) {
+    const ta = isTamil(s);
+    if (curTa !== null && ta !== curTa) push();
+    curTa = ta;
+    while (s.length > max) {
+      const cut = Math.max(s.lastIndexOf(",", max), s.lastIndexOf(" ", max));
+      const at = cut > max / 3 ? cut + 1 : max;
+      push();
+      parts.push(s.slice(0, at).trim());
+      s = s.slice(at).trim();
+    }
+    if ((cur + " " + s).length > max) push();
+    cur = cur ? `${cur} ${s}` : s;
+  }
+  push();
+  return parts;
+}
+
+function LongTts() {
+  const [text, setText] = useState("");
+  const [voice, setVoice] = useState("kavya");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ url: string; name: string; secs: number } | null>(null);
+  const abort = useRef<AbortController | null>(null);
+  useEffect(() => () => abort.current?.abort(), []);
+  useEffect(() => () => { if (result) URL.revokeObjectURL(result.url); }, [result]);
+
+  const run = async () => {
+    if (busy) {
+      abort.current?.abort();
+      return;
+    }
+    const parts = splitForTts(text.slice(0, LONG_MAX));
+    if (!parts.length) return;
+    const v = VOICES.find((x) => x.id === voice) ?? VOICES[0];
+    const ctrl = new AbortController();
+    abort.current = ctrl;
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    setDone(0);
+    setTotal(parts.length);
+    const blobs: Blob[] = new Array(parts.length);
+    let secs = 0;
+    // one language at a time (the engine keeps one in memory), then joined back in the original order
+    const firstTa = isTamil(parts[0]);
+    const order = parts.map((_, i) => i).sort((a, b) => Number(isTamil(parts[b]) === firstTa) - Number(isTamil(parts[a]) === firstTa) || a - b);
+    try {
+      for (let k = 0; k < order.length; k++) {
+        const i = order[k];
+        const lang: Lang = isTamil(parts[i]) ? "ta" : "en";
+        for (let attempt = 0; ; attempt++) {
+          const r = await fetch(TTS_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: parts[i], lang, voice: v.gender, format: "mp3" }),
+            signal: ctrl.signal,
+          });
+          if (r.ok) {
+            blobs[i] = await r.blob();
+            secs += Number(r.headers.get("X-Audio-Seconds") || 0);
+            break;
+          }
+          // busy or rate limited: wait and try again (a long script is many requests)
+          if ((r.status === 429 || r.status >= 500) && attempt < 4) {
+            await new Promise((res) => setTimeout(res, 8000 * (attempt + 1)));
+            continue;
+          }
+          let detail = "";
+          try {
+            detail = ((await r.json()) as { detail?: string }).detail ?? "";
+          } catch {
+            /* not json */
+          }
+          throw new Error(detail || t(`Part ${i + 1} could not be created.`, `பகுதி ${i + 1} உருவாக்க முடியவில்லை.`));
+        }
+        setDone(k + 1);
+      }
+      const name = `sansa-${v.name.toLowerCase()}-long-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, "-")}.mp3`;
+      setResult({ url: URL.createObjectURL(new Blob(blobs, { type: "audio/mpeg" })), name, secs });
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") setError((e as Error).message || tr("Something went wrong. Try again."));
+    } finally {
+      setBusy(false);
+      abort.current = null;
+    }
+  };
+
+  const mins = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+  return (
+    <div className="panel long-tts">
+      <div className="long-head">
+        <b>{tr("Long text to MP3")}</b>
+        <span className="mono small">
+          {text.length.toLocaleString()} / {LONG_MAX.toLocaleString()}
+        </span>
+      </div>
+      <textarea
+        value={text}
+        maxLength={LONG_MAX}
+        rows={6}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={tr("Paste a script, a story or an article (Tamil or English, up to 10,000 characters). You get one MP3.")}
+        disabled={busy}
+      />
+      <div className="long-row">
+        <select value={voice} onChange={(e) => setVoice(e.target.value)} disabled={busy} aria-label={tr("Voice")}>
+          {VOICES.map((x) => (
+            <option key={x.id} value={x.id}>
+              {tr(x.name)} · {tr(x.desc)}
+            </option>
+          ))}
+        </select>
+        <button className="btn-rec" onClick={() => void run()} disabled={!busy && !text.trim()}>
+          {busy ? tr("■ Stop") : tr("Create MP3")}
+        </button>
+      </div>
+      {busy && (
+        <>
+          <div className="clean-prog" aria-hidden="true">
+            <div style={{ width: `${Math.max(4, (done / Math.max(total, 1)) * 100)}%` }} />
+          </div>
+          <p className="clean-help" role="status">
+            {t(`Creating part ${Math.min(done + 1, total)} of ${total}… a long script takes a few minutes.`, `பகுதி ${Math.min(done + 1, total)} / ${total} உருவாகிறது… நீளமான எழுத்துக்கு சில நிமிடங்கள் ஆகும்.`)}
+          </p>
+        </>
+      )}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      {result && (
+        <div className="clean-result">
+          <p className="clean-stat" role="status">
+            {t(`Done · ${mins(result.secs)} of audio`, `முடிந்தது · ${mins(result.secs)} audio`)}
+          </p>
+          <audio controls preload="metadata" src={result.url} />
+          <a className="btn-dark dl-btn" href={result.url} download={result.name}>
+            {tr("⬇ Download MP3")}
+          </a>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1062,16 +1245,15 @@ export function Cleanup() {
     <section id="cleanup" className="band">
       <div className="sec split">
         <div className="split-copy">
-          <span className="eyebrow at">Audio cleanup</span>
-          <h2>Clean up any recording.</h2>
+          <span className="eyebrow at">{tr("Audio cleanup")}</span>
+          <h2>{tr("Clean up any recording.")}</h2>
           <p>
-            Remove fan, traffic and crowd noise from voice notes, call recordings and videos. It runs in your browser, so your
-            audio is never uploaded.
+            {tr("Remove fan, traffic and crowd noise from voice notes, call recordings and videos. It runs in your browser, so your audio is never uploaded.")}
           </p>
           <ul className="ticks">
-            <li>mp3, m4a, wav, ogg, opus, WhatsApp voice notes, mp4 and more</li>
-            <li>Up to 20 minutes at a time</li>
-            <li>Listen before and after, then download</li>
+            <li>{tr("mp3, m4a, wav, ogg, opus, WhatsApp voice notes, mp4 and more")}</li>
+            <li>{tr("Up to 20 minutes at a time")}</li>
+            <li>{tr("Listen before and after, then download")}</li>
           </ul>
         </div>
         <div className="panel cleanup-panel">
@@ -1100,40 +1282,40 @@ export function Cleanup() {
             />
             {file ? (
               <span className="drop-file">
-                <b>{file.name}</b>
+                <b>{tr(file.name)}</b>
                 <small>{(file.size / 1024 / 1024).toFixed(1)} MB</small>
               </span>
             ) : (
-              <span className="drop-hint">Drop an audio or video file here</span>
+              <span className="drop-hint">{tr("Drop an audio or video file here")}</span>
             )}
             <button className="btn-outline small" onClick={() => input.current?.click()} disabled={busy}>
-              {file ? "Choose another" : "Choose file"}
+              {file ? tr("Choose another") : tr("Choose file")}
             </button>
           </div>
 
           <div className="clean-opts">
-            <div className="seg" role="radiogroup" aria-label="Cleanup strength">
+            <div className="seg" role="radiogroup" aria-label={tr("Cleanup strength")}>
               {(["light", "normal", "strong"] as const).map((k) => (
                 <button key={k} role="radio" aria-checked={strength === k} className={strength === k ? "on" : ""} onClick={() => setStrength(k)} disabled={busy}>
-                  {k[0].toUpperCase() + k.slice(1)}
+                  {tr(k[0].toUpperCase() + k.slice(1))}
                 </button>
               ))}
             </div>
             <label className="check">
               <input type="checkbox" checked={louder} onChange={(e) => setLouder(e.target.checked)} disabled={busy} />
-              <span>Make voice louder</span>
+              <span>{tr("Make voice louder")}</span>
             </label>
           </div>
           <p className="clean-help">
             {strength === "light"
-              ? "Light keeps some room sound and removes most hiss."
+              ? tr("Light keeps some room sound and removes most hiss.")
               : strength === "normal"
-                ? "Normal removes most background noise. Best for most recordings."
-                : "Strong also quietens the gaps between words. Best for very noisy places."}
+                ? tr("Normal removes most background noise. Best for most recordings.")
+                : tr("Strong also quietens the gaps between words. Best for very noisy places.")}
           </p>
 
           <button className="btn-rec" onClick={() => void run()} disabled={!file || busy}>
-            {busy ? (stage === "reading" ? "Reading file…" : `Cleaning… ${Math.round(progress * 100)}%`) : "✨ Clean audio"}
+            {busy ? (stage === "reading" ? tr("Reading file…") : t(`Cleaning… ${Math.round(progress * 100)}%`, `சுத்தம் செய்கிறது… ${Math.round(progress * 100)}%`)) : tr("✨ Clean audio")}
           </button>
           {busy && (
             <div className="clean-prog" aria-hidden="true">
@@ -1149,20 +1331,20 @@ export function Cleanup() {
           {result && (
             <div className="clean-result">
               <p className="clean-stat" role="status">
-                Done · {mins(result.seconds)} cleaned{result.db > 0 ? ` · background noise ${result.db} dB quieter` : ""}
+                {t(`Done · ${mins(result.seconds)} cleaned`, `முடிந்தது · ${mins(result.seconds)} சுத்தம் செய்யப்பட்டது`)}{result.db > 0 ? t(` · background noise ${result.db} dB quieter`, ` · பின்னணி சத்தம் ${result.db} dB குறைந்தது`) : ""}
               </p>
               <label className="ab">
-                <span>Before</span>
+                <span>{tr("Before")}</span>
                 <audio controls preload="metadata" src={result.before} />
               </label>
               <label className="ab after">
-                <span>After</span>
+                <span>{tr("After")}</span>
                 <audio controls preload="metadata" src={result.after} />
               </label>
-              <a className="btn-dark dl-btn" href={result.after} download={result.name}>
-                ⬇ Download clean audio (WAV)
+              <a className="btn-dark dl-btn" href={result.after} download={tr(result.name)}>
+                {tr("⬇ Download clean audio (WAV)")}
               </a>
-              {file && /^video\//.test(file.type) && <small className="clean-note">For videos you get the cleaned sound as a WAV file.</small>}
+              {file && /^video\//.test(file.type) && <small className="clean-note">{tr("For videos you get the cleaned sound as a WAV file.")}</small>}
             </div>
           )}
         </div>
@@ -1279,26 +1461,26 @@ export function Clone() {
     return { h: 4, on: false };
   });
   const status = {
-    idle: "Ready when you are",
-    recording: "Recording… speak now",
-    processing: "Building your voice…",
-    ready: "Your voice preview is ready",
-    error: "Microphone access was blocked. Allow it and try again.",
+    idle: tr("Ready when you are"),
+    recording: tr("Recording… speak now"),
+    processing: tr("Building your voice…"),
+    ready: tr("Your voice preview is ready"),
+    error: tr("Microphone access was blocked. Allow it and try again."),
   }[st];
-  const btn = { idle: "● Start recording", recording: "■ Stop recording", processing: "Processing…", ready: "↺ Record again", error: "● Try again" }[st];
+  const btn = { idle: tr("● Start recording"), recording: tr("■ Stop recording"), processing: tr("Processing…"), ready: tr("↺ Record again"), error: tr("● Try again") }[st];
 
   return (
     <section id="clone" className="band">
       <div className="sec split">
         <div className="split-copy">
-          <span className="eyebrow at">Voice cloning</span>
-          <h2>Clone your voice in seconds.</h2>
-          <p>Read the line out loud. SANSA captures a short sample and turns it into a voice you can use anywhere.</p>
+          <span className="eyebrow at">{tr("Voice cloning")}</span>
+          <h2>{tr("Your own voice, coming soon.")}</h2>
+          <p>{tr("Read the line out loud to record a short sample and hear it back. Speaking in your own voice is coming soon.")}</p>
         </div>
         <div className={`panel clone-${st}`}>
           <div className="clone-line">
-            <span className="eyebrow small">Read aloud</span>
-            <span>“Hi, this is my voice. I’m creating my own AI voice with SANSA.”</span>
+            <span className="eyebrow small">{tr("Read aloud")}</span>
+            <span>{tr("“Hi, this is my voice. I’m creating my own AI voice with SANSA.”")}</span>
           </div>
           <div className="clone-bars" aria-hidden="true">
             {bars.map((b, i) => (
@@ -1321,11 +1503,11 @@ export function Clone() {
             </button>
             {st === "ready" && (
               <button className="btn-outline" onClick={playBack}>
-                {playingBack ? "■ Stop" : "▶ Play your voice"}
+                {playingBack ? tr("■ Stop") : tr("▶ Play your voice")}
               </button>
             )}
           </div>
-          <span className="mono small">Preview only. Your recording stays in this browser.</span>
+          <span className="mono small">{tr("Preview only. Your recording stays in this browser.")}</span>
         </div>
       </div>
     </section>
@@ -1346,24 +1528,24 @@ export function Agents() {
   return (
     <section id="agents" className="sec split">
       <div className="split-copy">
-        <span className="eyebrow at">Voice agents</span>
-        <h2>Agents that answer the phone for you.</h2>
-        <p>Voice assistants that take bookings, answer questions and switch between English and Tamil mid-call.</p>
+        <span className="eyebrow at">{tr("Voice agents")}</span>
+        <h2>{tr("Ask SANSA anything, by voice.")}</h2>
+        <p>{tr("Talk to the SANSA agent in Tamil or English about our tools. Phone call agents are coming soon.")}</p>
         <button className="btn-dark self-start" onClick={h.openAgent}>
-          Try the live agent
+          {tr("Try the live agent")}
         </button>
       </div>
       <div className="panel">
         <div className="call-head">
           <span>
             <i className="st-dot idle" aria-hidden="true" />
-            Live call · Clinic booking
+            {tr("Sample call · Clinic booking")}
           </span>
           <span className="mono">01:24</span>
         </div>
         {CHAT.map(([t, a]) => (
           <div key={t} className={a === "r" ? "bubble-row r" : "bubble-row"}>
-            <div className="bubble">{t}</div>
+            <div className="bubble">{tr(t)}</div>
           </div>
         ))}
       </div>
@@ -1418,11 +1600,11 @@ export function Api() {
     <section id="api" className="band">
       <div className="sec split">
         <div className="split-copy">
-          <span className="eyebrow at">Developers</span>
-          <h2>Add voice to your app in minutes.</h2>
-          <p>One API for speech generation, transcription, dubbing and voice agents, with SDKs for Python and Node.</p>
-          <a className="btn-dark self-start" href={SIGNUP}>
-            Get an API key
+          <span className="eyebrow at">{tr("Developers")}</span>
+          <h2>{tr("A developer API is coming soon.")}</h2>
+          <p>{tr("Speech to text and text to speech for your own app. Ask for early access on the contact page.")}</p>
+          <a className="btn-dark self-start" href="./contact">
+            {tr("Ask for early access")}
           </a>
         </div>
         <div className="code-box">
@@ -1456,19 +1638,19 @@ export function Faq({ items }: { items: { q: string; a: string }[] }) {
   return (
     <section className="sec faq2" aria-labelledby="faq">
       <div className="faq-head">
-        <span className="eyebrow at">FAQ</span>
-        <h2 id="faq">Frequently asked questions</h2>
+        <span className="eyebrow at">{tr("FAQ")}</span>
+        <h2 id="faq">{tr("Frequently asked questions")}</h2>
       </div>
       <div className="faq-list">
       {items.map((f, i) => (
-        <details key={f.q} open={i === 0}>
+        <details key={tr(f.q)} open={i === 0}>
           <summary>
-            <span>{f.q}</span>
+            <span>{tr(f.q)}</span>
             <span className="plus" aria-hidden="true">
               +
             </span>
           </summary>
-          <p>{f.a}</p>
+          <p>{tr(f.a)}</p>
         </details>
       ))}
       </div>
@@ -1480,8 +1662,8 @@ export function Cta() {
   return (
     <section className="cta-wrap">
       <div className="cta">
-        <h2>Give your words a voice.</h2>
-        <a href={SIGNUP}>Start free</a>
+        <h2>{tr("Give your words a voice.")}</h2>
+        <a href={SIGNUP}>{tr("Start free")}</a>
       </div>
     </section>
   );
@@ -1506,34 +1688,34 @@ export function SiteFooter() {
               <OrbMark size={24} />
               SANSA
             </span>
-            <span className="foot-tag">AI voices for English and Tamil.</span>
+            <span className="foot-tag">{tr("AI voices for English and Tamil.")}</span>
           </div>
-          <Col title="Products">
-            <a href="#voices">Text to Speech</a>
-            <a href="#voices">Voice Library</a>
-            <a href="#cleanup">Audio Cleanup</a>
-            <a href="#clone">Voice Cloning</a>
-            <a href="#agents">Voice Agents</a>
+          <Col title={tr("Products")}>
+            <a href="#voices">{tr("Text to Speech")}</a>
+            <a href="#voices">{tr("Voice Library")}</a>
+            <a href="#cleanup">{tr("Audio Cleanup")}</a>
+            <a href="#clone">{tr("Voice Cloning")}</a>
+            <a href="#agents">{tr("Voice Agents")}</a>
           </Col>
-          <Col title="Developers">
-            <a href="#api">API</a>
-            <a href="#api">SDKs</a>
+          <Col title={tr("Developers")}>
+            <a href="#api">{tr("API")}</a>
+            <a href="#api">{tr("SDKs")}</a>
           </Col>
-          <Col title="Support">
-            <a href={CONTACT}>Help Centre</a>
-            <a href="#faq">FAQ</a>
-            <a href={LOGIN}>Log in</a>
+          <Col title={tr("Support")}>
+            <a href={CONTACT}>{tr("Help Centre")}</a>
+            <a href="#faq">{tr("FAQ")}</a>
+            <a href={LOGIN}>{tr("Log in")}</a>
           </Col>
-          <Col title="Company">
-            <a href="./about">About</a>
-            <a href="./about">Careers</a>
-            <a href="./privacy">Privacy</a>
-            <a href="./terms">Terms of Use</a>
-            <a href="./refund">Refund</a>
+          <Col title={tr("Company")}>
+            <a href="./about">{tr("About")}</a>
+            <a href="./about">{tr("Careers")}</a>
+            <a href="./privacy">{tr("Privacy")}</a>
+            <a href="./terms">{tr("Terms of Use")}</a>
+            <a href="./refund">{tr("Refund")}</a>
           </Col>
         </div>
         <div className="foot-bottom">
-          <span>© {new Date().getFullYear()} SANSA AI. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} SANSA AI. {tr("All rights reserved.")}</span>
           <div className="foot-social">
             <a href="https://www.instagram.com/sansaai.in">Instagram</a>
             <a href="https://x.com/sansa06in">X</a>
@@ -1708,15 +1890,15 @@ function AgentOverlay({ onClose }: { onClose: () => void }) {
     }
     listen();
   };
-  const label = { idle: "Agent ready", listening: "Listening…", thinking: "Thinking…", speaking: "Speaking" }[state];
+  const label = tr({ idle: "Agent ready", listening: "Listening…", thinking: "Thinking…", speaking: "Speaking" }[state]);
 
   return (
-    <div className="agent" role="dialog" aria-label="SANSA voice agent">
+    <div className="agent" role="dialog" aria-label={tr("SANSA voice agent")}>
       <div className="agent-status">
         <i className={`st-dot ${state}`} aria-hidden="true" />
         {label}
       </div>
-      <button className="agent-close" onClick={onClose} aria-label="Close agent">
+      <button className="agent-close" onClick={onClose} aria-label={tr("Close agent")}>
         ✕
       </button>
       <div className="agent-chat" ref={chatRef} aria-live="polite">
@@ -1738,11 +1920,11 @@ function AgentOverlay({ onClose }: { onClose: () => void }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send(input)}
-          placeholder="Ask about SANSA, or tap the mic and speak"
-          aria-label="Message"
+          placeholder={tr("Ask about SANSA, or tap the mic and speak")}
+          aria-label={tr("Message")}
         />
         <button className="btn-amber small" onClick={() => send(input)}>
-          Send
+          {tr("Send")}
         </button>
       </div>
       <div className="agent-suggest">
@@ -1751,7 +1933,7 @@ function AgentOverlay({ onClose }: { onClose: () => void }) {
             {s}
           </button>
         ))}
-        <div className="seg" role="radiogroup" aria-label="Agent language">
+        <div className="seg" role="radiogroup" aria-label={tr("Agent language")}>
           {(["en", "ta"] as const).map((l) => (
             <button key={l} role="radio" aria-checked={h.lang === l} className={h.lang === l ? "on" : ""} onClick={() => h.setLang(l)}>
               {l.toUpperCase()}
@@ -1794,7 +1976,7 @@ function Palette({ onClose }: { onClose: () => void }) {
     ["Privacy", "Page", page("./privacy")],
     ...VOICES.map(
       (v): [string, string, () => void] => [
-        `Play voice: ${v.name}`,
+        `Play voice: ${tr(v.name)}`,
         "Voice",
         () => void h.play(v.id, voiceSample(v), v),
       ],
@@ -1823,7 +2005,7 @@ function Palette({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="pal-back" onClick={onClose}>
-      <div className="pal" role="dialog" aria-label="Search" onClick={(e) => e.stopPropagation()}>
+      <div className="pal" role="dialog" aria-label={tr("Search")} onClick={(e) => e.stopPropagation()}>
         <div className="pal-head">
           <span aria-hidden="true">⌕</span>
           <input
@@ -1834,8 +2016,8 @@ function Palette({ onClose }: { onClose: () => void }) {
               setSel(0);
             }}
             onKeyDown={onKey}
-            placeholder="Search pages, voices and actions"
-            aria-label="Search"
+            placeholder={tr("Search pages, voices and actions")}
+            aria-label={tr("Search")}
           />
           <kbd>ESC</kbd>
         </div>
@@ -1846,7 +2028,7 @@ function Palette({ onClose }: { onClose: () => void }) {
               <small>{g}</small>
             </button>
           ))}
-          {!items.length && <div className="pal-empty">No results</div>}
+          {!items.length && <div className="pal-empty">{tr("No results")}</div>}
         </div>
       </div>
     </div>
