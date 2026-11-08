@@ -11,7 +11,7 @@ import { denoiseToWav } from "./denoise";
 import { deleteItem, listItems, renameItem, saveItem, titleFrom, type LibraryItem } from "./libraryStore";
 import { readAloudSupported, speak, voiceFor, voicesReady } from "./readAloud";
 import { Library } from "./Library";
-import { Cta, Faq, Hero, HowItWorks, Products, SiteFooter, SiteHeader, useTheme } from "./Landing";
+import { Agents, Api, Clone, Cta, Faq, Hero, HomeProvider, HowItWorks, Products, SiteFooter, SiteHeader, Voices, useTheme } from "./Landing";
 
 const STYLES: { id: OutputStyle; label: string; note: string }[] = [
   { id: "native", label: "As spoken", note: "same language" },
@@ -65,31 +65,27 @@ function save(key: string, value: string) {
   }
 }
 
-/** Shown on the page; the same questions are in index.html as FAQPage structured data for Google. Keep both in sync. */
+/** Shown on the page (template wording); the same questions are in index.html as FAQPage data for Google. Keep both in sync. */
 const FAQ: { q: string; a: string }[] = [
   {
-    q: "Is Sansa Voice free?",
-    a: "Yes. Voice to text, uploads, subtitles and the library are free. No sign up and no install.",
+    q: "Which languages are supported?",
+    a: "SANSA currently supports English and Tamil for speech generation, transcription and dubbing.",
   },
   {
-    q: "How accurate is Tamil voice to text?",
-    a: SANSA_ENGINE_URL
-      ? "Tamil uses the SANSA Tamil engine, a Whisper model trained on Tamil speech (IIT Madras SPRING Lab), running on our own server. Clear speech with little background noise gives the best result. Turn on Clean background noise for noisy recordings."
-      : "Tamil uses a Whisper model trained on Tamil speech (IIT Madras SPRING Lab) that runs on your device. Clear speech with little background noise gives the best result. Turn on Clean background noise for noisy recordings.",
+    q: "Can I use the audio commercially?",
+    a: "Yes. Audio created on paid plans can be used in commercial projects, including ads, videos and apps.",
   },
   {
-    q: "Which files can I upload?",
-    a: "Audio such as mp3, m4a, wav, ogg, opus, amr, aac, WhatsApp voice notes and call recordings up to 25 MB, and mp4 or webm video up to 300 MB for subtitles.",
+    q: "How does voice cloning work?",
+    a: "Record or upload a short sample of your voice. SANSA creates a private voice you can use in the studio and through the API.",
   },
   {
-    q: "Is my audio saved?",
-    a: SANSA_ENGINE_URL
-      ? "No. Tamil audio is sent to our server only to convert it and is not saved. Other languages are converted on your own device. Your saved texts stay only in your browser."
-      : "No. Audio is converted on your own device unless you choose an online engine. Your saved texts stay only in your browser.",
+    q: "Is there a free plan?",
+    a: "Yes. You can sign up free and try every tool before upgrading.",
   },
   {
-    q: "Can I make YouTube or Instagram subtitles?",
-    a: "Yes. After you upload or record, download the subtitles as .srt or .vtt, or the text with times.",
+    q: "Can I cancel anytime?",
+    a: "Yes. You can cancel or change your plan at any time from your account settings.",
   },
 ];
 
@@ -392,8 +388,11 @@ export default function App() {
 
   return (
     <>
-      <SiteHeader theme={theme} onToggleTheme={toggleTheme} />
-      <Hero onTalkLive={talkLive} engineOn={Boolean(SANSA_ENGINE_URL)} />
+    <HomeProvider theme={theme} onToggleTheme={toggleTheme} onStartDictation={() => talkLive(langId === "auto" ? "ta-IN" : langId)}>
+      <SiteHeader />
+      <Hero />
+      <Products />
+      <HowItWorks />
 
     <div className="page" id="app">
       <div className="app-head">
@@ -702,11 +701,14 @@ export default function App() {
       </p>
     </div>
 
-      <Products />
-      <HowItWorks />
+      <Voices />
+      <Clone />
+      <Agents />
+      <Api />
       <Faq items={FAQ} />
       <Cta />
       <SiteFooter />
+    </HomeProvider>
     </>
   );
 }
