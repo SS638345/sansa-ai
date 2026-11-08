@@ -400,3 +400,85 @@ kbd { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; pa
 .pal-list button span { flex: 1; }
 .pal-list small { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted-2); }
 .pal-empty { padding: 24px; text-align: center; color: var(--muted-2); font-size: 15px; }
+
+/* ===== Layout polish: one grid for every section (2026-11-08, part 3) ===== */
+/* Hero fits the first screen */
+.hero2 { min-height: calc(100svh - 61px); padding: 32px 20px 28px; gap: 6px; }
+.orb-host { height: clamp(240px, 44vh, 540px); }
+@media (max-width: 760px) {
+  .hero2 { min-height: 0; padding: 36px 16px 32px; }
+  .hero2 h1 { font-size: clamp(32px, 9.4vw, 44px); }
+  .orb-host { height: clamp(220px, 34vh, 300px); }
+}
+
+/* Header: real search icon, phone menu */
+.search-btn svg { flex-shrink: 0; }
+.search-btn::before { content: none !important; }
+.menu-btn { display: none; position: relative; width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgb(var(--ink) / 0.14); background: transparent; cursor: pointer; flex-shrink: 0; }
+.menu-btn span, .menu-btn span::before, .menu-btn span::after { display: block; position: absolute; height: 1.6px; border-radius: 2px; background: var(--text); transition: transform 0.2s, background 0.2s; }
+.menu-btn span { left: 10px; right: 10px; top: 50%; transform: translateY(-50%); }
+.menu-btn span::before, .menu-btn span::after { content: ""; left: 0; right: 0; }
+.menu-btn span::before { top: -5px; }
+.menu-btn span::after { top: 5px; }
+.menu-open .menu-btn span { background: transparent; }
+.menu-open .menu-btn span::before { top: 0; transform: rotate(45deg); }
+.menu-open .menu-btn span::after { top: 0; transform: rotate(-45deg); }
+.mobile-menu { display: flex; flex-direction: column; padding: 4px 20px 20px; border-top: 1px solid rgb(var(--ink) / 0.08); }
+.mobile-menu > a { padding: 14px 0; font-size: 17px; color: var(--text); text-decoration: none; border-bottom: 1px solid rgb(var(--ink) / 0.06); }
+.mobile-menu-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
+.mobile-menu-actions a { min-width: 0; text-align: center; padding: 12px; border-radius: 999px; text-decoration: none; font-size: 15px; font-weight: 600; }
+@media (max-width: 760px) {
+  .menu-btn { display: block; }
+  .search-btn { width: 36px; padding: 0; justify-content: center; }
+  .site-nav > .btn-dark { display: none; }
+  .site-nav { padding: 12px 16px; }
+}
+@media (max-width: 960px) { .site-links { display: none; } .menu-btn { display: block; } .site-nav { justify-content: flex-end; } .site-brand { margin-right: auto; } }
+@media (min-width: 961px) { .mobile-menu { display: none; } }
+
+/* Product cards: titles line up across each row; badge in the corner */
+.prod { position: relative; justify-content: flex-start; min-height: 0; }
+.prod-name { margin-top: 18px; padding-right: 0; }
+.prod-name em { position: absolute; top: 24px; right: 20px; }
+
+/* Voice to text tool on the same 1200px grid, two columns on desktop */
+.page { max-width: 1200px; padding: 96px 20px; gap: 28px; }
+.app-head { align-items: flex-end; }
+.app-head h2 { margin: 12px 0 0; font-size: clamp(30px, 4vw, 52px); line-height: 1.05; letter-spacing: -0.035em; font-weight: 600; }
+.app-head .pill { margin-bottom: 8px; }
+.privacy-line { text-align: left; }
+@media (min-width: 1000px) {
+  .app { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 20px; align-items: start; }
+  .app > .library { grid-column: 1 / -1; }
+}
+
+/* FAQ: heading left, questions right, same grid as other sections */
+.faq2 { max-width: 1200px; display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 56px; align-items: start; }
+.faq-head { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 96px; }
+.faq2 .faq-head h2 { margin: 0; font-size: clamp(30px, 4vw, 52px); }
+@media (max-width: 860px) {
+  .faq2 { grid-template-columns: 1fr; gap: 28px; }
+  .faq-head { position: static; }
+}
+
+/* CTA lines up with the content edges */
+.cta-wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px 96px; }
+.cta { max-width: none; }
+
+/* Phone: same 16px side gutter everywhere */
+@media (max-width: 760px) {
+  .sec, .page { padding-left: 16px; padding-right: 16px; }
+  .sec { padding-top: 72px; padding-bottom: 72px; }
+  .page { padding-top: 72px; padding-bottom: 72px; }
+  .cta-wrap { padding: 0 16px 72px; }
+  .site-foot-in { padding-left: 16px; padding-right: 16px; }
+  .split { gap: 32px; }
+}
+.site-head.menu-open { background: var(--bg); }
+@media (max-width: 760px) {
+  .voice-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .voice-chips button { justify-content: flex-start; }
+}
+:root[data-theme="light"] .pill.ok { color: #15803d; border-color: rgb(21 128 61 / 0.4); }
+:root[data-theme="light"] .prod-name em.live { color: #15803d; background: rgb(21 128 61 / 0.1); }
+.brand-mark { display: block; flex-shrink: 0; border-radius: 7px; }

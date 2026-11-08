@@ -28,7 +28,7 @@ function initialTheme(): Theme {
   } catch {
     /* storage blocked */
   }
-  return "dark";
+  return "light";
 }
 
 export function useTheme() {
@@ -376,15 +376,31 @@ export function HomeProvider({
 
 /* ------------------------------------------------------------------ header */
 
-function OrbMark({ size = 26 }: { size?: number }) {
-  return <span className="orb-mark" style={{ width: size, height: size }} aria-hidden="true" />;
+/** SANSA logo: the red S mark (public/brand/sansa-mark.svg). */
+function OrbMark({ size = 28 }: { size?: number }) {
+  return <img className="brand-mark" src="/brand/sansa-mark.svg" width={size} height={size} alt="" aria-hidden="true" />;
 }
+
+const SearchIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </svg>
+);
 
 export function SiteHeader() {
   const h = useHome();
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+  const [menu, setMenu] = useState(false);
+  useEffect(() => {
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenu(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menu]);
+  const close = () => setMenu(false);
   return (
-    <header className="site-head">
+    <header className={menu ? "site-head menu-open" : "site-head"}>
       <nav className="site-nav">
         <a className="site-brand" href="./">
           <OrbMark />
@@ -397,6 +413,7 @@ export function SiteHeader() {
           <a href="#api">API</a>
         </div>
         <button className="search-btn" onClick={h.openPal} aria-label="Search">
+          <SearchIcon />
           <span className="search-word">Search</span>
           <kbd>{mac ? "⌘K" : "Ctrl K"}</kbd>
         </button>
@@ -409,7 +426,46 @@ export function SiteHeader() {
         <button className="theme-btn" onClick={h.toggleTheme} title="Switch light / dark" aria-label="Switch light / dark">
           {h.theme === "dark" ? "☀" : "☾"}
         </button>
+        <button
+          className="menu-btn"
+          onClick={() => setMenu((m) => !m)}
+          aria-label={menu ? "Close menu" : "Open menu"}
+          aria-expanded={menu}
+          aria-controls="mobile-menu"
+        >
+          <span aria-hidden="true" />
+        </button>
       </nav>
+      {menu && (
+        <div className="mobile-menu" id="mobile-menu">
+          <a href="#tools" onClick={close}>
+            Products
+          </a>
+          <a href="#app" onClick={close}>
+            Speech to Text
+          </a>
+          <a href="#voices" onClick={close}>
+            Text to Speech
+          </a>
+          <a href="#voices" onClick={close}>
+            Voices
+          </a>
+          <a href="#api" onClick={close}>
+            API
+          </a>
+          <a href="#faq" onClick={close}>
+            FAQ
+          </a>
+          <div className="mobile-menu-actions">
+            <a className="btn-outline" href={LOGIN}>
+              Log in
+            </a>
+            <a className="btn-dark" href={SIGNUP}>
+              Sign up
+            </a>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
@@ -1143,7 +1199,11 @@ export function Api() {
 export function Faq({ items }: { items: { q: string; a: string }[] }) {
   return (
     <section className="sec faq2" aria-labelledby="faq">
-      <h2 id="faq">Frequently asked questions</h2>
+      <div className="faq-head">
+        <span className="eyebrow at">FAQ</span>
+        <h2 id="faq">Frequently asked questions</h2>
+      </div>
+      <div className="faq-list">
       {items.map((f, i) => (
         <details key={f.q} open={i === 0}>
           <summary>
@@ -1155,6 +1215,7 @@ export function Faq({ items }: { items: { q: string; a: string }[] }) {
           <p>{f.a}</p>
         </details>
       ))}
+      </div>
     </section>
   );
 }
