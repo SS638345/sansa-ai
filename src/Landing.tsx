@@ -961,7 +961,7 @@ const PRODUCTS: { name: string; desc: string; href?: string; soon?: boolean }[] 
   { name: "Voice Changer", desc: "Turn one recording into any voice.", soon: true },
   { name: "Sound Effects", desc: "Generate sound from a text prompt.", soon: true },
   { name: "Voice Agents", desc: "Assistants for calls and support.", href: "#agents" },
-  { name: "Audio Cleanup", desc: "Remove noise and isolate clear speech.", href: "#app" },
+  { name: "Audio Cleanup", desc: "Remove noise and isolate clear speech.", href: "#cleanup" },
 ];
 
 export function Products() {
@@ -1083,6 +1083,182 @@ export function Voices() {
           {h.loadingId && VOICES.some((v) => v.id === h.loadingId) ? "Creating audio… switching between Tamil and English can take up to 20 seconds." : note}
         </p>
       )}
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ audio cleanup */
+
+type CleanStage = "idle" | "reading" | "cleaning" | "done" | "error";
+
+export function Cleanup() {
+  const [file, setFile] = useState<File | null>(null);
+  const [strength, setStrength] = useState<"light" | "normal" | "strong">("normal");
+  const [louder, setLouder] = useState(true);
+  const [stage, setStage] = useState<CleanStage>("idle");
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ before: string; after: string; name: string; seconds: number; db: number } | null>(null);
+  const [drag, setDrag] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+
+  useEffect(
+    () => () => {
+      if (result) {
+        URL.revokeObjectURL(result.before);
+        URL.revokeObjectURL(result.after);
+      }
+    },
+    [result],
+  );
+
+  const pick = (f: File | null | undefined) => {
+    if (!f) return;
+    setFile(f);
+    setError(null);
+    setStage("idle");
+    setResult(null);
+  };
+
+  const run = async () => {
+    if (!file) return;
+    setError(null);
+    setResult(null);
+    setProgress(0);
+    setStage("reading");
+    try {
+      const { cleanAudio, wav48k } = await import("./cleanup");
+      const r = await cleanAudio(file, { strength, louder }, (st, f) => {
+        setStage(st);
+        setProgress(f);
+      });
+      const base = file.name.replace(/\.[^.]+$/, "") || "audio";
+      setResult({
+        before: URL.createObjectURL(wav48k(r.original)),
+        after: URL.createObjectURL(wav48k(r.cleaned)),
+        name: `${base}-clean.wav`,
+        seconds: r.seconds,
+        db: r.noiseReducedDb,
+      });
+      setStage("done");
+    } catch (e) {
+      setError((e as Error).message || "Could not clean this file.");
+      setStage("error");
+    }
+  };
+
+  const busy = stage === "reading" || stage === "cleaning";
+  const mins = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+
+  return (
+    <section id="cleanup" className="band">
+      <div className="sec split">
+        <div className="split-copy">
+          <span className="eyebrow at">Audio cleanup</span>
+          <h2>Clean up any recording.</h2>
+          <p>
+            Remove fan, traffic and crowd noise from voice notes, call recordings and videos. It runs in your browser, so your
+            audio is never uploaded.
+          </p>
+          <ul className="ticks">
+            <li>mp3, m4a, wav, ogg, opus, WhatsApp voice notes, mp4 and more</li>
+            <li>Up to 20 minutes at a time</li>
+            <li>Listen before and after, then download</li>
+          </ul>
+        </div>
+        <div className="panel cleanup-panel">
+          <div
+            className={drag ? "drop on" : "drop"}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDrag(true);
+            }}
+            onDragLeave={() => setDrag(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDrag(false);
+              pick(e.dataTransfer.files?.[0]);
+            }}
+          >
+            <input
+              ref={input}
+              type="file"
+              accept="audio/*,video/*,.amr,.opus,.3gp,.m4a"
+              hidden
+              onChange={(e) => {
+                pick(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+            {file ? (
+              <span className="drop-file">
+                <b>{file.name}</b>
+                <small>{(file.size / 1024 / 1024).toFixed(1)} MB</small>
+              </span>
+            ) : (
+              <span className="drop-hint">Drop an audio or video file here</span>
+            )}
+            <button className="btn-outline small" onClick={() => input.current?.click()} disabled={busy}>
+              {file ? "Choose another" : "Choose file"}
+            </button>
+          </div>
+
+          <div className="clean-opts">
+            <div className="seg" role="radiogroup" aria-label="Cleanup strength">
+              {(["light", "normal", "strong"] as const).map((k) => (
+                <button key={k} role="radio" aria-checked={strength === k} className={strength === k ? "on" : ""} onClick={() => setStrength(k)} disabled={busy}>
+                  {k[0].toUpperCase() + k.slice(1)}
+                </button>
+              ))}
+            </div>
+            <label className="check">
+              <input type="checkbox" checked={louder} onChange={(e) => setLouder(e.target.checked)} disabled={busy} />
+              <span>Make voice louder</span>
+            </label>
+          </div>
+          <p className="clean-help">
+            {strength === "light"
+              ? "Light keeps some room sound and removes most hiss."
+              : strength === "normal"
+                ? "Normal removes most background noise. Best for most recordings."
+                : "Strong also quietens the gaps between words. Best for very noisy places."}
+          </p>
+
+          <button className="btn-rec" onClick={() => void run()} disabled={!file || busy}>
+            {busy ? (stage === "reading" ? "Reading file…" : `Cleaning… ${Math.round(progress * 100)}%`) : "✨ Clean audio"}
+          </button>
+          {busy && (
+            <div className="clean-prog" aria-hidden="true">
+              <div style={{ width: `${stage === "reading" ? 5 : Math.max(5, progress * 100)}%` }} />
+            </div>
+          )}
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+
+          {result && (
+            <div className="clean-result">
+              <p className="clean-stat" role="status">
+                Done · {mins(result.seconds)} cleaned{result.db > 0 ? ` · background noise ${result.db} dB quieter` : ""}
+              </p>
+              <label className="ab">
+                <span>Before</span>
+                <audio controls preload="metadata" src={result.before} />
+              </label>
+              <label className="ab after">
+                <span>After</span>
+                <audio controls preload="metadata" src={result.after} />
+              </label>
+              <a className="btn-dark dl-btn" href={result.after} download={result.name}>
+                ⬇ Download clean audio (WAV)
+              </a>
+              {file && /^video\//.test(file.type) && <small className="clean-note">For videos you get the cleaned sound as a WAV file.</small>}
+            </div>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
@@ -1427,6 +1603,7 @@ export function SiteFooter() {
           <Col title="Products">
             <a href="#voices">Text to Speech</a>
             <a href="#voices">Voice Library</a>
+            <a href="#cleanup">Audio Cleanup</a>
             <a href="#clone">Voice Cloning</a>
             <a href="#agents">Voice Agents</a>
           </Col>
@@ -1680,6 +1857,7 @@ function Palette({ onClose }: { onClose: () => void }) {
     ["Products", "Section", () => h.goTo("tools")],
     ["Voice to text", "Section", () => h.goTo("app")],
     ["Voice library", "Section", () => h.goTo("voices")],
+    ["Clean up audio (remove noise)", "Section", () => h.goTo("cleanup")],
     ["Clone your voice", "Section", () => h.goTo("clone")],
     ["Voice agents", "Section", () => h.goTo("agents")],
     ["Developer API", "Section", () => h.goTo("api")],
