@@ -327,6 +327,30 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  // A file shared from another app (Android share sheet → sw.js) is waiting: convert it right away.
+  const sharedDone = useRef(false);
+  useEffect(() => {
+    if (sharedDone.current || !new URLSearchParams(location.search).has("shared")) return;
+    sharedDone.current = true;
+    history.replaceState(null, "", location.pathname + location.hash);
+    void (async () => {
+      try {
+        const cache = await caches.open("sansa-share");
+        const res = await cache.match("shared-file");
+        if (!res) return;
+        await cache.delete("shared-file");
+        const name = decodeURIComponent(res.headers.get("X-Name") ?? "shared-audio");
+        const file = new File([await res.blob()], name, { type: res.headers.get("Content-Type") ?? "" });
+        setMode("upload");
+        document.getElementById("app")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        await onFile(file);
+      } catch {
+        setError("Could not open the shared file. Use Upload audio instead.");
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const switchMode = (m: Mode) => {
     live.stop();
     if (recorder.state === "recording") void recorder.stop();
