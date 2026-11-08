@@ -342,6 +342,11 @@ const TA: Record<string, string> = {
   "Opens a print page: choose Save as PDF": "Print page திறக்கும்: ‘Save as PDF’ தேர்ந்தெடுங்கள்",
   "Share the text on WhatsApp": "எழுத்தை WhatsApp-இல் பகிர்",
   "Allow pop-ups for this site to save as PDF.": "PDF-ஆக சேமிக்க இந்த தளத்துக்கு pop-up அனுமதி கொடுங்கள்.",
+  "Long text to MP3": "நீளமான எழுத்து → MP3",
+  "Paste a script, a story or an article (Tamil or English, up to 10,000 characters). You get one MP3.": "Script, கதை அல்லது கட்டுரையை ஒட்டுங்கள் (தமிழ் அல்லது English, 10,000 எழுத்துகள் வரை). ஒரே MP3 கிடைக்கும்.",
+  "Create MP3": "MP3 உருவாக்கு",
+  "⬇ Download MP3": "⬇ MP3 பதிவிறக்கு",
+  "Something went wrong. Try again.": "ஏதோ தவறு நடந்தது. மீண்டும் முயற்சிக்கவும்.",
 };
 
 /** Interface text in the chosen language (English when there is no Tamil yet). Non-strings pass through. */

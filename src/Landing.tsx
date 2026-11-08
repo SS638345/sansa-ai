@@ -1002,7 +1002,177 @@ export function Voices() {
           {h.loadingId && VOICES.some((v) => v.id === h.loadingId) ? tr("Creating audio… switching between Tamil and English can take up to 20 seconds.") : note}
         </p>
       )}
+      <LongTts />
     </section>
+  );
+}
+
+/* ------------------------------------------------------------------ long text -> one MP3 (A6) */
+
+const LONG_MAX = 10000;
+const PART_MAX = 1400; // the voice engine takes up to 1500 characters per request
+
+/**
+ * Split at sentence ends (then commas / spaces) into parts the engine accepts.
+ * A new part starts whenever the language changes, so English sentences in a Tamil
+ * script are read by the English voice instead of being skipped by the Tamil one.
+ */
+export function splitForTts(text: string, max = PART_MAX): string[] {
+  const sentences = text.replace(/\r/g, "").split(/(?<=[.!?।\n])\s+/).map((s) => s.trim()).filter(Boolean);
+  const parts: string[] = [];
+  let cur = "";
+  let curTa: boolean | null = null;
+  const push = () => {
+    if (cur.trim()) parts.push(cur.trim());
+    cur = "";
+  };
+  for (let s of sentences) {
+    const ta = isTamil(s);
+    if (curTa !== null && ta !== curTa) push();
+    curTa = ta;
+    while (s.length > max) {
+      const cut = Math.max(s.lastIndexOf(",", max), s.lastIndexOf(" ", max));
+      const at = cut > max / 3 ? cut + 1 : max;
+      push();
+      parts.push(s.slice(0, at).trim());
+      s = s.slice(at).trim();
+    }
+    if ((cur + " " + s).length > max) push();
+    cur = cur ? `${cur} ${s}` : s;
+  }
+  push();
+  return parts;
+}
+
+function LongTts() {
+  const [text, setText] = useState("");
+  const [voice, setVoice] = useState("kavya");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ url: string; name: string; secs: number } | null>(null);
+  const abort = useRef<AbortController | null>(null);
+  useEffect(() => () => abort.current?.abort(), []);
+  useEffect(() => () => { if (result) URL.revokeObjectURL(result.url); }, [result]);
+
+  const run = async () => {
+    if (busy) {
+      abort.current?.abort();
+      return;
+    }
+    const parts = splitForTts(text.slice(0, LONG_MAX));
+    if (!parts.length) return;
+    const v = VOICES.find((x) => x.id === voice) ?? VOICES[0];
+    const ctrl = new AbortController();
+    abort.current = ctrl;
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    setDone(0);
+    setTotal(parts.length);
+    const blobs: Blob[] = new Array(parts.length);
+    let secs = 0;
+    // one language at a time (the engine keeps one in memory), then joined back in the original order
+    const firstTa = isTamil(parts[0]);
+    const order = parts.map((_, i) => i).sort((a, b) => Number(isTamil(parts[b]) === firstTa) - Number(isTamil(parts[a]) === firstTa) || a - b);
+    try {
+      for (let k = 0; k < order.length; k++) {
+        const i = order[k];
+        const lang: Lang = isTamil(parts[i]) ? "ta" : "en";
+        for (let attempt = 0; ; attempt++) {
+          const r = await fetch(TTS_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: parts[i], lang, voice: v.gender, format: "mp3" }),
+            signal: ctrl.signal,
+          });
+          if (r.ok) {
+            blobs[i] = await r.blob();
+            secs += Number(r.headers.get("X-Audio-Seconds") || 0);
+            break;
+          }
+          // busy or rate limited: wait and try again (a long script is many requests)
+          if ((r.status === 429 || r.status >= 500) && attempt < 4) {
+            await new Promise((res) => setTimeout(res, 8000 * (attempt + 1)));
+            continue;
+          }
+          let detail = "";
+          try {
+            detail = ((await r.json()) as { detail?: string }).detail ?? "";
+          } catch {
+            /* not json */
+          }
+          throw new Error(detail || t(`Part ${i + 1} could not be created.`, `பகுதி ${i + 1} உருவாக்க முடியவில்லை.`));
+        }
+        setDone(k + 1);
+      }
+      const name = `sansa-${v.name.toLowerCase()}-long-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, "-")}.mp3`;
+      setResult({ url: URL.createObjectURL(new Blob(blobs, { type: "audio/mpeg" })), name, secs });
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") setError((e as Error).message || tr("Something went wrong. Try again."));
+    } finally {
+      setBusy(false);
+      abort.current = null;
+    }
+  };
+
+  const mins = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+  return (
+    <div className="panel long-tts">
+      <div className="long-head">
+        <b>{tr("Long text to MP3")}</b>
+        <span className="mono small">
+          {text.length.toLocaleString()} / {LONG_MAX.toLocaleString()}
+        </span>
+      </div>
+      <textarea
+        value={text}
+        maxLength={LONG_MAX}
+        rows={6}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={tr("Paste a script, a story or an article (Tamil or English, up to 10,000 characters). You get one MP3.")}
+        disabled={busy}
+      />
+      <div className="long-row">
+        <select value={voice} onChange={(e) => setVoice(e.target.value)} disabled={busy} aria-label={tr("Voice")}>
+          {VOICES.map((x) => (
+            <option key={x.id} value={x.id}>
+              {tr(x.name)} · {tr(x.desc)}
+            </option>
+          ))}
+        </select>
+        <button className="btn-rec" onClick={() => void run()} disabled={!busy && !text.trim()}>
+          {busy ? tr("■ Stop") : tr("Create MP3")}
+        </button>
+      </div>
+      {busy && (
+        <>
+          <div className="clean-prog" aria-hidden="true">
+            <div style={{ width: `${Math.max(4, (done / Math.max(total, 1)) * 100)}%` }} />
+          </div>
+          <p className="clean-help" role="status">
+            {t(`Creating part ${Math.min(done + 1, total)} of ${total}… a long script takes a few minutes.`, `பகுதி ${Math.min(done + 1, total)} / ${total} உருவாகிறது… நீளமான எழுத்துக்கு சில நிமிடங்கள் ஆகும்.`)}
+          </p>
+        </>
+      )}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      {result && (
+        <div className="clean-result">
+          <p className="clean-stat" role="status">
+            {t(`Done · ${mins(result.secs)} of audio`, `முடிந்தது · ${mins(result.secs)} audio`)}
+          </p>
+          <audio controls preload="metadata" src={result.url} />
+          <a className="btn-dark dl-btn" href={result.url} download={result.name}>
+            {tr("⬇ Download MP3")}
+          </a>
+        </div>
+      )}
+    </div>
   );
 }
 

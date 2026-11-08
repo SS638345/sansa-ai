@@ -527,3 +527,13 @@ kbd { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; pa
 /* Site language switch (2026-11-08) */
 .lang-btn { height: 36px; min-width: 52px; padding: 0 12px; border-radius: 999px; border: 1px solid rgb(var(--ink) / 0.14); background: transparent; color: var(--text); cursor: pointer; font: inherit; font-size: 14px; font-weight: 600; flex-shrink: 0; }
 .lang-btn:hover { border-color: rgb(242 185 80 / 0.6); }
+
+/* Long text to MP3 (A6, 2026-11-08) */
+.long-tts { margin-top: 24px; gap: 14px; }
+.long-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.long-head b { font-size: 18px; }
+.long-tts textarea { width: 100%; min-height: 140px; }
+.long-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.long-row select { flex: 1; min-width: 200px; width: auto; }
+.long-row .btn-rec { flex: 0 0 auto; min-width: 160px; }
+.long-tts audio { width: 100%; }
