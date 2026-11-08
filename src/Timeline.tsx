@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { tr } from "./i18n";
 import { clock, toVtt, type Segment } from "./transcript";
 
 export type MediaKind = "audio" | "video";
@@ -48,10 +49,10 @@ export function Timeline({ segments, mediaUrl, kind }: { segments: Segment[]; me
   return (
     <div className="timeline">
       <div className="timeline-head">
-        <h3>Timeline</h3>
+        <h3>{tr("Timeline")}</h3>
         <span className="count">
-          {segments.length} lines · tap a line to play from there
-          {checks > 0 && <b className="check-count"> · {checks} to check</b>}
+          {tr("{n} lines · tap a line to play from there").replace("{n}", String(segments.length))}
+          {checks > 0 && <b className="check-count"> · {tr("{n} to check").replace("{n}", String(checks))}</b>}
         </span>
       </div>
       {audioUrl && kind === "video" ? (
@@ -78,7 +79,7 @@ export function Timeline({ segments, mediaUrl, kind }: { segments: Segment[]; me
           onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)}
         />
       ) : (
-        <p className="hint left">Audio is not loaded. Open this from My library to play it again; subtitles still download.</p>
+        <p className="hint left">{tr("Audio is not loaded. Open this from My library to play it again; subtitles still download.")}</p>
       )}
       <ol ref={listRef} className="lines">
         {segments.map((s, i) => (
@@ -92,8 +93,8 @@ export function Timeline({ segments, mediaUrl, kind }: { segments: Segment[]; me
             >
               <time>{clock(s.start)}</time>
               <span dir="auto">
-                {s.text}
-                {s.check && <em className="check-tag">check</em>}
+                {tr(s.text)}
+                {s.check && <em className="check-tag">{tr("check")}</em>}
               </span>
             </button>
           </li>
