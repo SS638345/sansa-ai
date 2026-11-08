@@ -482,3 +482,10 @@ kbd { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; pa
 :root[data-theme="light"] .pill.ok { color: #15803d; border-color: rgb(21 128 61 / 0.4); }
 :root[data-theme="light"] .prod-name em.live { color: #15803d; background: rgb(21 128 61 / 0.1); }
 .brand-mark { display: block; flex-shrink: 0; border-radius: 7px; }
+
+/* Real voice engine (2026-11-08) */
+.dl-link { margin-left: 10px; color: var(--accent-text); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.dl-link:hover { text-decoration: underline; }
+.voice-orb.speaking { animation: orb-pulse 0.9s ease-in-out infinite; }
+@keyframes orb-pulse { 50% { transform: scale(1.12); box-shadow: 0 0 0 6px rgb(242 185 80 / 0.25); } }
+@media (prefers-reduced-motion: reduce) { .voice-orb.speaking { animation: none; } }

@@ -58,20 +58,22 @@ const SW = [
   "radial-gradient(circle at 35% 30%,#c4f1ff,#28a8d8 50%,#0b4a63)",
 ];
 
-type Voice = { id: string; name: string; desc: string; tag: string; pitch: number; rate: number; swatch: string };
+type Gender = "female" | "male";
+type Voice = { id: string; name: string; desc: string; lang: Lang; gender: Gender; swatch: string };
 
+/** The real SANSA voice engine voices (AI4Bharat Indic-TTS on our server). */
 const VOICES: Voice[] = (
   [
-    ["kavya", "Kavya", "Warm · Narration", "Narration", 1.1, 0.95],
-    ["arjun", "Arjun", "Deep · Advertising", "Advertising", 0.7, 0.95],
-    ["meera", "Meera", "Bright · Explainers", "Conversational", 1.25, 1.05],
-    ["vikram", "Vikram", "Calm · Audiobooks", "Narration", 0.85, 0.9],
-    ["anika", "Anika", "Friendly · Support", "Conversational", 1.15, 1],
-    ["dev", "Dev", "Energetic · Promos", "Advertising", 1, 1.15],
-    ["leela", "Leela", "Playful · Characters", "Characters", 1.5, 1.05],
-    ["raghav", "Raghav", "Gravelly · Characters", "Characters", 0.5, 0.85],
+    ["kavya", "Kavya", "Tamil · Female", "ta", "female"],
+    ["arjun", "Arjun", "Tamil · Male", "ta", "male"],
+    ["meera", "Meera", "English · Female", "en", "female"],
+    ["vikram", "Vikram", "English · Male", "en", "male"],
   ] as const
-).map(([id, name, desc, tag, pitch, rate], i) => ({ id, name, desc, tag, pitch, rate, swatch: SW[i] }));
+).map(([id, name, desc, lang, gender], i) => ({ id, name, desc, lang, gender, swatch: SW[i] }));
+
+const voiceFor2 = (lang: Lang, gender: Gender) => VOICES.find((v) => v.lang === lang && v.gender === gender) ?? VOICES[0];
+
+const TTS_URL = "/tts/speak";
 
 const SAMPLE: Record<Lang, string> = {
   en: "Welcome to SANSA. Type anything here and hear it come alive.",
@@ -217,7 +219,10 @@ type Home = {
   voice: string;
   setVoice: (id: string) => void;
   playing: string | null;
+  loadingId: string | null;
+  lastAudio: { id: string; url: string; name: string } | null;
   play: (id: string, text: string, v?: Voice) => Promise<string | null>;
+  speakWait: (text: string) => Promise<void>;
   stopPlaying: () => void;
   agentOpen: boolean;
   openAgent: () => void;
@@ -239,6 +244,61 @@ function chunks(text: string): string[] {
   return parts.map((p) => p.trim()).filter(Boolean);
 }
 
+const isTamil = (t: string) => /[\u0B80-\u0BFF]/.test(t);
+
+class EngineError extends Error {
+  constructor(message: string, readonly userFacing: boolean) {
+    super(message);
+  }
+}
+
+/** Ask the SANSA voice engine for an mp3. User-facing errors (bad text) are shown as is; others fall back to the device voice. */
+async function engineAudio(text: string, lang: Lang, gender: Gender, signal: AbortSignal): Promise<Blob> {
+  let r: Response;
+  try {
+    r = await fetch(TTS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, lang, voice: gender, format: "mp3" }),
+      signal,
+    });
+  } catch (e) {
+    if ((e as Error).name === "AbortError") throw e;
+    throw new EngineError("network", false);
+  }
+  if (r.ok) return r.blob();
+  let detail = "";
+  try {
+    detail = ((await r.json()) as { detail?: string }).detail ?? "";
+  } catch {
+    /* not json */
+  }
+  if (r.status === 429) throw new EngineError("Too many requests. Wait a minute and try again.", true);
+  if (r.status === 400 || r.status === 413) throw new EngineError(detail || "This text can't be spoken.", true);
+  throw new EngineError(detail || `engine ${r.status}`, false);
+}
+
+function deviceSpeak(text: string, lang: Lang, onEnd: () => void): string | null {
+  if (!readAloudSupported) return "This browser cannot read text aloud. Try Chrome or your phone's browser.";
+  const dv = voiceFor(lang === "ta" ? "ta-IN" : "en-IN");
+  if (!dv) return noVoiceNote(lang);
+  const queue = chunks(text);
+  const next = (i: number) => {
+    if (i >= queue.length) return onEnd();
+    const u = new SpeechSynthesisUtterance(queue[i]);
+    u.voice = dv;
+    u.lang = dv.lang;
+    u.onboundary = () => {
+      orb.kick = 1;
+    };
+    u.onend = () => next(i + 1);
+    u.onerror = () => onEnd();
+    speechSynthesis.speak(u);
+  };
+  next(0);
+  return null;
+}
+
 function noVoiceNote(lang: Lang): string {
   return lang === "ta"
     ? "No Tamil voice on this device. On Android: Settings → Text-to-speech → add Tamil. On Windows: Settings → Time & language → Speech."
@@ -257,64 +317,161 @@ export function HomeProvider({
   children: ReactNode;
 }) {
   const [lang, setLang] = useState<Lang>("en");
-  const [voice, setVoice] = useState("kavya");
+  const [voice, setVoice] = useState("meera");
   const [playing, setPlaying] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [lastAudio, setLastAudio] = useState<{ id: string; url: string; name: string } | null>(null);
   const playingRef = useRef<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const meterRef = useRef<{ ac: AudioContext; an: AnalyserNode; iv: number } | null>(null);
   const [agentOpen, setAgentOpen] = useState(false);
   const [palOpen, setPalOpen] = useState(false);
 
+  const stopMeter = () => {
+    const m = meterRef.current;
+    if (m) {
+      clearInterval(m.iv);
+      void m.ac.close().catch(() => {});
+      meterRef.current = null;
+    }
+  };
+
   const stopPlaying = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    audioRef.current?.pause();
+    audioRef.current = null;
+    stopMeter();
     playingRef.current = null;
     setPlaying(null);
+    setLoadingId(null);
     orb.busy = false;
     if (readAloudSupported) speechSynthesis.cancel();
   }, []);
 
-  const play = useCallback(
-    async (id: string, text: string, v?: Voice) => {
-      if (playingRef.current === id) {
-        stopPlaying();
-        return null;
-      }
-      stopPlaying();
-      if (!readAloudSupported) return "This browser cannot read text aloud. Try Chrome or your phone's browser.";
-      await voicesReady();
-      const l: Lang = /[\u0B80-\u0BFF]/.test(text) ? "ta" : "en";
-      const dv = voiceFor(l === "ta" ? "ta-IN" : "en-IN");
-      if (!dv) return noVoiceNote(l);
-      const queue = chunks(text);
-      playingRef.current = id;
-      setPlaying(id);
-      orb.busy = true;
-      const next = (i: number) => {
-        if (playingRef.current !== id) return;
-        if (i >= queue.length) {
+  /** Plays an mp3 blob; the orb follows the real loudness. Resolves when it ends or is stopped. */
+  const playBlob = (id: string, blob: Blob): Promise<void> =>
+    new Promise((resolve) => {
+      const url = URL.createObjectURL(blob);
+      const a = new Audio(url);
+      audioRef.current = a;
+      const done = () => {
+        stopMeter();
+        if (playingRef.current === id) {
           playingRef.current = null;
           setPlaying(null);
           orb.busy = false;
-          return;
         }
-        const u = new SpeechSynthesisUtterance(queue[i]);
-        u.voice = dv;
-        u.lang = dv.lang;
-        u.pitch = v?.pitch ?? 1;
-        u.rate = v?.rate ?? 1;
-        u.onboundary = () => {
-          orb.kick = 1;
-        };
-        u.onend = () => next(i + 1);
-        u.onerror = () => {
+        resolve();
+      };
+      a.onended = done;
+      a.onerror = done;
+      a.onpause = () => {
+        if (audioRef.current !== a) done();
+      };
+      try {
+        const ac = new AudioContext();
+        const src = ac.createMediaElementSource(a);
+        const an = ac.createAnalyser();
+        an.fftSize = 256;
+        src.connect(an);
+        an.connect(ac.destination);
+        const buf = new Uint8Array(an.fftSize);
+        const iv = window.setInterval(() => {
+          an.getByteTimeDomainData(buf);
+          let peak = 0;
+          for (const v of buf) peak = Math.max(peak, Math.abs(v - 128));
+          orb.kick = Math.min(1, (peak / 128) * 1.6);
+        }, 50);
+        meterRef.current = { ac, an, iv };
+      } catch {
+        orb.busy = true;
+      }
+      playingRef.current = id;
+      setPlaying(id);
+      void a.play().catch(done);
+    });
+
+  const play = useCallback(
+    async (id: string, text: string, v?: Voice) => {
+      if (playingRef.current === id || abortRef.current) {
+        const same = playingRef.current === id || loadingId === id;
+        stopPlaying();
+        if (same) return null;
+      }
+      stopPlaying();
+      const clean = text.trim();
+      if (!clean) return "Type something to hear it.";
+      const lang: Lang = isTamil(clean) ? "ta" : "en";
+      const gender: Gender = v?.gender ?? "female";
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+      setLoadingId(id);
+      try {
+        const blob = await engineAudio(clean, lang, gender, ctrl.signal);
+        if (ctrl.signal.aborted) return null;
+        abortRef.current = null;
+        setLoadingId(null);
+        const name = `sansa-${voiceFor2(lang, gender).name.toLowerCase()}-${new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-")}.mp3`;
+        setLastAudio((old) => {
+          if (old) URL.revokeObjectURL(old.url);
+          return { id, url: URL.createObjectURL(blob), name };
+        });
+        void playBlob(id, blob);
+        return null;
+      } catch (e) {
+        if ((e as Error).name === "AbortError") return null;
+        abortRef.current = null;
+        setLoadingId(null);
+        if (e instanceof EngineError && e.userFacing) return e.message;
+        // engine down or busy: use the device voice so the visitor still hears something
+        await voicesReady();
+        playingRef.current = id;
+        setPlaying(id);
+        orb.busy = true;
+        const err = deviceSpeak(clean, lang, () => {
           if (playingRef.current === id) {
             playingRef.current = null;
             setPlaying(null);
             orb.busy = false;
           }
-        };
-        speechSynthesis.speak(u);
-      };
-      next(0);
-      return null;
+        });
+        if (err) {
+          playingRef.current = null;
+          setPlaying(null);
+          orb.busy = false;
+          return err;
+        }
+        return "The SANSA voice engine is busy, so this plays with your device's voice.";
+      }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [stopPlaying, loadingId],
+  );
+
+  /** For the voice agent: speak a reply with the engine (device voice if it fails) and wait until done. */
+  const speakWait = useCallback(
+    async (text: string) => {
+      stopPlaying();
+      const lang: Lang = isTamil(text) ? "ta" : "en";
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+      try {
+        const blob = await engineAudio(text, lang, "female", ctrl.signal);
+        abortRef.current = null;
+        if (ctrl.signal.aborted) return;
+        await playBlob("agent", blob);
+      } catch (e) {
+        abortRef.current = null;
+        if ((e as Error).name === "AbortError") return;
+        await voicesReady();
+        await new Promise<void>((res) => {
+          if (deviceSpeak(text, lang, () => res())) res();
+        });
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [stopPlaying],
   );
 
@@ -350,7 +507,10 @@ export function HomeProvider({
       voice,
       setVoice,
       playing,
+      loadingId,
+      lastAudio,
       play,
+      speakWait,
       stopPlaying,
       agentOpen,
       openAgent: () => {
@@ -362,7 +522,7 @@ export function HomeProvider({
       goTo,
       startDictation,
     }),
-    [theme, onToggleTheme, lang, voice, playing, play, stopPlaying, agentOpen, palOpen, goTo, startDictation],
+    [theme, onToggleTheme, lang, voice, playing, loadingId, lastAudio, play, speakWait, stopPlaying, agentOpen, palOpen, goTo, startDictation],
   );
 
   return (
@@ -711,16 +871,23 @@ function Orb() {
 
 export function Hero() {
   const h = useHome();
-  const [text, setText] = useState(SAMPLE.en);
+  const [text, setText] = useState(SAMPLE[h.lang]);
   const [note, setNote] = useState<string | null>(null);
   const cur = VOICES.find((v) => v.id === h.voice) ?? VOICES[0];
 
   const pick = (l: Lang) => {
     if (text === SAMPLE[h.lang] || !text.trim()) setText(SAMPLE[l]);
     h.setLang(l);
+    h.setVoice(voiceFor2(l, cur.gender).id);
+    setNote(null);
+  };
+  const pickVoice = (v: Voice) => {
+    h.setVoice(v.id);
+    if (v.lang !== h.lang) pick(v.lang);
     setNote(null);
   };
   const onSpeak = async () => setNote(await h.play("hero", text, cur));
+  const label = h.loadingId === "hero" ? "… Creating" : h.playing === "hero" ? "■ Stop" : "▶ Speak";
 
   return (
     <section className="hero2">
@@ -747,7 +914,7 @@ export function Hero() {
             ))}
           </div>
           <button className="btn-amber" onClick={() => void onSpeak()} disabled={!text.trim()}>
-            {h.playing === "hero" ? "■ Stop" : "▶ Speak"}
+            {label}
           </button>
           <button className="btn-ghost" onClick={h.openAgent}>
             <span className="dot" aria-hidden="true" />
@@ -755,22 +922,28 @@ export function Hero() {
           </button>
         </div>
         <div className="voice-chips" role="radiogroup" aria-label="Voice">
-          {VOICES.slice(0, 4).map((v) => (
+          {VOICES.map((v) => (
             <button
               key={v.id}
               role="radio"
               aria-checked={v.id === h.voice}
               className={v.id === h.voice ? "on" : ""}
-              onClick={() => h.setVoice(v.id)}
+              onClick={() => pickVoice(v)}
+              title={v.desc}
             >
               <span style={{ background: v.swatch }} aria-hidden="true" />
               {v.name}
             </button>
           ))}
         </div>
-        {note && (
+        {(note || h.lastAudio?.id === "hero" || h.loadingId === "hero") && (
           <p className="hero2-note" role="status">
-            {note}
+            {h.loadingId === "hero" ? "Creating your audio… the first one can take up to 20 seconds." : note}
+            {h.lastAudio?.id === "hero" && h.loadingId !== "hero" && (
+              <a className="dl-link" href={h.lastAudio.url} download={h.lastAudio.name}>
+                ⬇ Download mp3
+              </a>
+            )}
           </p>
         )}
       </div>
@@ -856,13 +1029,15 @@ export function HowItWorks() {
 
 /* ------------------------------------------------------------------ voice library */
 
-const FILTERS = ["All", "Narration", "Advertising", "Conversational", "Characters"];
+const FILTERS = ["All", "Tamil", "English"];
+const voiceSample = (v: Voice) =>
+  v.lang === "ta" ? `வணக்கம், நான் ${v.name}. இது SANSA-வின் தமிழ் குரல்.` : `Hi, I'm ${v.name}. This is how I sound on SANSA.`;
 
 export function Voices() {
   const h = useHome();
   const [filter, setFilter] = useState("All");
   const [note, setNote] = useState<string | null>(null);
-  const list = VOICES.filter((v) => filter === "All" || v.tag === filter);
+  const list = VOICES.filter((v) => filter === "All" || (filter === "Tamil" ? v.lang === "ta" : v.lang === "en"));
   return (
     <section id="voices" className="sec">
       <div className="sec-head-row">
@@ -874,7 +1049,7 @@ export function Voices() {
           Browse all voices →
         </a>
       </div>
-      <div className="filters" role="radiogroup" aria-label="Voice style">
+      <div className="filters" role="radiogroup" aria-label="Voice language">
         {FILTERS.map((f) => (
           <button key={f} role="radio" aria-checked={filter === f} className={filter === f ? "on" : ""} onClick={() => setFilter(f)}>
             {f}
@@ -884,31 +1059,28 @@ export function Voices() {
       <div className="voice-grid">
         {list.map((v) => {
           const on = h.playing === v.id;
+          const busy = h.loadingId === v.id;
           return (
             <div key={v.id} className={on ? "voice-card on" : "voice-card"}>
-              <span className="voice-orb" style={{ background: v.swatch }} aria-hidden="true" />
+              <span className={on ? "voice-orb speaking" : "voice-orb"} style={{ background: v.swatch }} aria-hidden="true" />
               <div className="voice-meta">
                 <b>{v.name}</b>
                 <span>{v.desc}</span>
               </div>
               <button
                 className="play-btn"
-                aria-label={on ? `Stop ${v.name}` : `Play ${v.name}`}
-                onClick={() =>
-                  void h
-                    .play(v.id, h.lang === "ta" ? `வணக்கம், நான் ${v.name}.` : `Hi, I'm ${v.name}. This is how I sound.`, v)
-                    .then(setNote)
-                }
+                aria-label={on || busy ? `Stop ${v.name}` : `Play ${v.name}`}
+                onClick={() => void h.play(v.id, voiceSample(v), v).then(setNote)}
               >
-                {on ? "■" : "▶"}
+                {busy ? "…" : on ? "■" : "▶"}
               </button>
             </div>
           );
         })}
       </div>
-      {note && (
+      {(note || (h.loadingId && VOICES.some((v) => v.id === h.loadingId))) && (
         <p className="sec-note" role="status">
-          {note}
+          {h.loadingId && VOICES.some((v) => v.id === h.loadingId) ? "Creating audio… switching between Tamil and English can take up to 20 seconds." : note}
         </p>
       )}
     </section>
@@ -1317,34 +1489,18 @@ function AgentOverlay({ onClose }: { onClose: () => void }) {
 
   const listenRef = useRef<() => void>(() => {});
 
-  const say = useCallback(async (text: string) => {
-    if (!readAloudSupported) return set("idle");
-    await voicesReady();
-    const ta = /[\u0B80-\u0BFF]/.test(text);
-    const v = voiceFor(ta ? "ta-IN" : "en-IN");
-    if (!v || !alive.current) {
-      set("idle");
-      if (handsFree.current && alive.current) setTimeout(() => listenRef.current(), 250);
-      return;
-    }
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.voice = v;
-    u.lang = v.lang;
-    u.pitch = 1.1;
-    u.onboundary = () => {
-      orb.kick = 1;
-    };
-    const done = () => {
+  const say = useCallback(
+    async (text: string) => {
+      if (!alive.current) return;
+      set("speaking");
+      await h.speakWait(text);
       if (!alive.current) return;
       set("idle");
       if (handsFree.current) setTimeout(() => listenRef.current(), 250);
-    };
-    u.onend = done;
-    u.onerror = done;
-    set("speaking");
-    speechSynthesis.speak(u);
-  }, []);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [h.speakWait],
+  );
 
   const send = useCallback(
     (raw: string, fromVoice = false) => {
@@ -1383,7 +1539,7 @@ function AgentOverlay({ onClose }: { onClose: () => void }) {
       setMsgs((m) => [...m, { role: "assistant", content: "Voice input is not available in this browser. Type your question instead, or use Chrome." }]);
       return;
     }
-    if (readAloudSupported) speechSynthesis.cancel();
+    h.stopPlaying();
     const rec = new SR();
     recRef.current = rec;
     rec.lang = h.lang === "ta" ? "ta-IN" : "en-IN";
@@ -1413,7 +1569,7 @@ function AgentOverlay({ onClose }: { onClose: () => void }) {
     } catch {
       /* already running */
     }
-  }, [SR, h.lang, send]);
+  }, [SR, h, send]);
   listenRef.current = listen;
 
   useEffect(() => {
@@ -1428,7 +1584,7 @@ function AgentOverlay({ onClose }: { onClose: () => void }) {
       window.removeEventListener("keydown", onKey);
       handsFree.current = false;
       recRef.current?.abort();
-      if (readAloudSupported) speechSynthesis.cancel();
+      h.stopPlaying();
       orb.busy = false;
       orb.listening = false;
     };
@@ -1537,7 +1693,7 @@ function Palette({ onClose }: { onClose: () => void }) {
       (v): [string, string, () => void] => [
         `Play voice: ${v.name}`,
         "Voice",
-        () => void h.play(v.id, `Hi, I'm ${v.name}. This is how I sound.`, v),
+        () => void h.play(v.id, voiceSample(v), v),
       ],
     ),
   ];
