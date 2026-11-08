@@ -11,7 +11,7 @@ import { denoiseToWav } from "./denoise";
 import { deleteItem, listItems, renameItem, saveItem, titleFrom, type LibraryItem } from "./libraryStore";
 import { readAloudSupported, speak, voiceFor, voicesReady } from "./readAloud";
 import { Library } from "./Library";
-import { Agents, Api, Clone, Cta, Faq, Hero, HomeProvider, HowItWorks, Products, SiteFooter, SiteHeader, Voices, useTheme } from "./Landing";
+import { Agents, Api, Cleanup, Clone, Cta, Faq, Hero, HomeProvider, HowItWorks, Products, SiteFooter, SiteHeader, Voices, useTheme } from "./Landing";
 
 const STYLES: { id: OutputStyle; label: string; note: string }[] = [
   { id: "native", label: "As spoken", note: "same language" },
@@ -701,6 +701,7 @@ export default function App() {
       </p>
     </div>
 
+      <Cleanup />
       <Voices />
       <Clone />
       <Agents />

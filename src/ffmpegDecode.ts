@@ -24,12 +24,17 @@ function getFFmpeg() {
 
 /** Any audio/video file → 16 kHz mono float samples, using ffmpeg.wasm. */
 export async function ffmpegTo16kMono(blob: Blob): Promise<Float32Array> {
+  return ffmpegToMono(blob, 16000);
+}
+
+/** Any audio/video file → mono float samples at the given rate, using ffmpeg.wasm. */
+export async function ffmpegToMono(blob: Blob, rate: number): Promise<Float32Array> {
   const ff = await getFFmpeg();
   const name = (blob instanceof File && blob.name.match(/\.[a-z0-9]{1,5}$/i)?.[0]) || ".bin";
   const input = `in${name}`;
   await ff.writeFile(input, await fetchFile(blob));
   try {
-    const code = await ff.exec(["-i", input, "-vn", "-ac", "1", "-ar", "16000", "-f", "f32le", "out.pcm"]);
+    const code = await ff.exec(["-i", input, "-vn", "-ac", "1", "-ar", String(rate), "-f", "f32le", "out.pcm"]);
     if (code !== 0) throw new Error(`ffmpeg exit ${code}`);
     const out = (await ff.readFile("out.pcm")) as Uint8Array;
     await ff.deleteFile("out.pcm");
