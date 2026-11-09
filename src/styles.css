@@ -588,3 +588,8 @@ kbd { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; pa
   .prod-desc { font-size: 13px; line-height: 1.45; }
   .foot-grid { grid-template-columns: 1fr 1fr; gap: 24px 16px; }
 }
+
+/* ---- polish 3 (2026-11-09): icon + text buttons line up ---- */
+.row button, .library-toggle { display: inline-flex; align-items: center; gap: 7px; }
+.library-toggle .ico { margin-left: auto; }
+.site-links { gap: 20px; }

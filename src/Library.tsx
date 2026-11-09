@@ -1,3 +1,4 @@
+import { Ic } from "./icons";
 import { useState } from "react";
 import { tr } from "./i18n";
 import type { LibraryItem } from "./libraryStore";
@@ -28,7 +29,7 @@ export function Library({
         <span>
           <b>{tr("My library")}</b> <small>{items.length ? tr("{n} saved on this device").replace("{n}", String(items.length)) : tr("every conversion is saved here")}</small>
         </span>
-        <span aria-hidden="true">{open ? "▴" : "▾"}</span>
+        {open ? <Ic.ChevronUp /> : <Ic.ChevronDown />}
       </button>
       {open && (
         <>
