@@ -81,7 +81,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "How does voice cloning work?",
-    a: "Voice cloning is coming soon. Today you can record a short sample on this page and play it back.",
+    a: "Tick the box, read a short Tamil passage aloud (about 20 seconds) and we check the words, so only your own voice can be used. Then type up to 300 characters in Tamil or English and get an MP3 in your voice. Your voice print stays only in your browser.",
   },
   {
     q: "Is it free?",

@@ -1,5 +1,5 @@
 import { think, resetContext } from "../src/agentBrain";
-import { ENGINE_UPLOAD_MB, LOCAL_UPLOAD_MB, SPEAK_MAX_CHARS, VIDEO_UPLOAD_MB } from "../src/limits";
+import { CLONE_MAX_CHARS, ENGINE_UPLOAD_MB, LOCAL_UPLOAD_MB, SPEAK_MAX_CHARS, VIDEO_UPLOAD_MB } from "../src/limits";
 
 // [question, expected intent, expected language, expected action type or "" for none]
 const CASES: [string, string, "en" | "ta", string][] = [
@@ -100,7 +100,7 @@ for (const [q, intent, lang, action] of CASES) {
 
 // follow-up context: "when?" after a coming-soon topic
 resetContext();
-think("voice cloning");
+think("is dubbing available");
 const w = think("when?");
 const ctxOk = w.intent === "when";
 resetContext();
@@ -108,14 +108,17 @@ const bare = think("when?");
 const bareOk = bare.intent === "fallback";
 
 console.log(`${pass}/${CASES.length} questions answered correctly`);
-console.log(`follow-up "when?" after cloning: ${ctxOk ? "ok" : "FAIL " + w.intent}; bare "when?": ${bareOk ? "ok" : "FAIL " + bare.intent}`);
+console.log(`follow-up "when?" after dubbing: ${ctxOk ? "ok" : "FAIL " + w.intent}; bare "when?": ${bareOk ? "ok" : "FAIL " + bare.intent}`);
 if (fails.length) console.log("Wrong:\n" + fails.join("\n"));
 // Facts: the agent must quote the site's real limits (src/limits.ts)
 const facts: [string, string, string[]][] = [
+  ["can you clone my voice", "cloning", ["works now", "own voice", "three hundred characters"]],
   ["how big a file can I upload", "upload", [`${ENGINE_UPLOAD_MB} megabytes`, `${LOCAL_UPLOAD_MB} megabytes`, `${VIDEO_UPLOAD_MB} megabytes`]],
   ["how many characters can I type", "tts", [`${SPEAK_MAX_CHARS} characters`, "ten thousand"]],
 ];
 const factFails: string[] = [];
+// the agent says "three hundred characters" for voice cloning: keep it in step with the real limit
+if (CLONE_MAX_CHARS !== 300) factFails.push(`  CLONE_MAX_CHARS is ${CLONE_MAX_CHARS}: update the cloning answer in agentBrain.ts`);
 for (const [q, intent, must] of facts) {
   resetContext();
   const r = think(q);

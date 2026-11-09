@@ -83,8 +83,8 @@ const INTENTS: Intent[] = [
     id: "features",
     kw: ["what can", "what do you do", "what is sansa", "about sansa", "features", "services", "products", "tools", "help me", "sansa enna", "enna panna mudiyum", "what does sansa"],
     ta: ["என்ன செய்ய", "என்ன பண்ண", "சான்சா என்ன", "சேவை", "என்னென்ன"],
-    en: "SANSA turns speech into text in Tamil, English and fifteen more languages, even hour-long recordings, and saves it as Word, PDF or WhatsApp. It reads text aloud with four voices, turns long scripts into one MP3, converts Tanglish to Tamil letters, and removes background noise. All free here. Voice cloning, dubbing and the API are coming soon.",
-    tam: "SANSA பேச்சை எழுத்தா மாற்றும் (ஒரு மணி நேர recording வரை), Word, PDF, WhatsApp-ஆ save பண்ணலாம். நான்கு voices-ல text-ஐ படிச்சு காட்டும், நீளமான script-ஐ ஒரே MP3-ஆ மாற்றும், Tanglish-ஐ தமிழ் எழுத்தா மாற்றும், background சத்தத்தை நீக்கும். எல்லாமே இங்க இலவசம். Voice cloning, dubbing, API விரைவில் வருது.",
+    en: "SANSA turns speech into text in Tamil, English and fifteen more languages, even hour-long recordings, and saves it as Word, PDF or WhatsApp. It reads text aloud with four voices, turns long scripts into one MP3, converts Tanglish to Tamil letters, and removes background noise. It can also speak in your own voice after you read a short Tamil passage. All free here. Dubbing and the API are coming soon.",
+    tam: "SANSA பேச்சை எழுத்தா மாற்றும் (ஒரு மணி நேர recording வரை), Word, PDF, WhatsApp-ஆ save பண்ணலாம். நான்கு voices-ல text-ஐ படிச்சு காட்டும், நீளமான script-ஐ ஒரே MP3-ஆ மாற்றும், Tanglish-ஐ தமிழ் எழுத்தா மாற்றும், background சத்தத்தை நீக்கும். ஒரு சின்ன தமிழ் பத்தியை படிச்சா உங்க சொந்த குரல்லயும் பேசும். எல்லாமே இங்க இலவசம். Dubbing, API விரைவில் வருது.",
     next: ["Start voice to text", "Play Kavya", "Clean up audio"],
   },
   {
@@ -179,11 +179,11 @@ const INTENTS: Intent[] = [
     id: "cloning",
     kw: ["clone", "cloning", "my own voice", "my voice", "copy my voice", "voice clone", "en voice", "enoda voice"],
     ta: ["குளோன்", "என் குரல்", "என்னோட குரல்"],
-    en: "Voice cloning is coming soon. You can already record a ten second sample on this page to hear how it will work.",
-    tam: "Voice cloning விரைவில் வருது. இப்போ இந்த page-ல பத்து second sample record பண்ணி பார்க்கலாம்.",
+    en: "Voice cloning works now, for your own voice only. Tick the box, read the short Tamil passage aloud for about twenty seconds, and we check the words. Then type up to three hundred characters in Tamil or English and get an MP3 in your voice. Your voice print stays only in your browser.",
+    tam: "Voice cloning இப்போ வேலை செய்யுது, உங்க சொந்த குரலுக்கு மட்டும். Box-ஐ tick பண்ணி, காட்டுற சின்ன தமிழ் பத்தியை இருபது second சத்தமா படிங்க, வார்த்தைகளை சரிபார்ப்போம். அப்புறம் தமிழ் அல்லது English-ல முன்னூறு எழுத்து வரை type பண்ணா உங்க குரல்ல MP3 கிடைக்கும். உங்க குரல் அடையாளம் உங்க browser-ல மட்டும் இருக்கும்.",
     action: { type: "goto", id: "clone" },
     actionOnDo: true,
-    next: ["When will it be ready?", "Play Kavya"],
+    next: ["Is my audio saved?", "Play Kavya"],
   },
   {
     id: "dubbing",
@@ -411,7 +411,7 @@ export function think(text: string): Reply {
   }
 
   // "when?" right after a coming-soon topic
-  const soon = ["cloning", "dubbing", "changer", "api", "phoneagent"];
+  const soon = ["dubbing", "changer", "api", "phoneagent"];
   let best: Intent | null = null;
   let top = 0;
   for (const it of INTENTS) {

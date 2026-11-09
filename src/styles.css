@@ -554,3 +554,14 @@ kbd { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; pa
   .seg button, .voice-chips button, .options .link { min-height: 40px; }
   .code-tabs button { min-height: 36px; }
 }
+
+/* ---- voice cloning studio (2026-11-08) ---- */
+.clone-rules { font-size: 14px; color: var(--muted); border-left: 3px solid #f2b950; padding-left: 12px; }
+.clone-consent { align-items: flex-start; font-size: 15px; line-height: 1.45; color: var(--text); }
+.clone-consent input { margin-top: 3px; }
+.clone-tanglish { display: block; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.clone-text { width: 100%; resize: vertical; min-height: 96px; padding: 12px 14px; border-radius: 12px; border: 1px solid rgb(var(--ink) / 0.14); background: var(--well); color: var(--text); font: inherit; font-size: 16px; line-height: 1.5; }
+.clone-out { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.clone-out audio { flex: 1; min-width: 220px; height: 40px; }
+.clone-err { margin: 0; padding: 10px 12px; border-radius: 10px; background: rgb(229 72 77 / 0.1); color: var(--danger); font-size: 14px; line-height: 1.5; }
+.clone-out a.btn-outline { text-decoration: none; }

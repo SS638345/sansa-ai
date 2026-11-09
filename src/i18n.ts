@@ -139,6 +139,23 @@ const TA: Record<string, string> = {
   light: "குறைவு",
   normal: "சாதாரணம்",
   strong: "அதிகம்",
+  // voice cloning (live 2026-11-08): server messages and FAQ
+  "Tick the box, read a short Tamil passage aloud (about 20 seconds) and we check the words, so only your own voice can be used. Then type up to 300 characters in Tamil or English and get an MP3 in your voice. Your voice print stays only in your browser.":
+    "Box-ஐ tick செய்து, ஒரு சிறிய தமிழ் பத்தியை (சுமார் 20 வினாடி) சத்தமாக படியுங்கள். வார்த்தைகளை சரிபார்ப்பதால் உங்கள் சொந்த குரல் மட்டுமே பயன்படும். பிறகு தமிழ் அல்லது ஆங்கிலத்தில் 300 எழுத்துகள் வரை type செய்தால் உங்கள் குரலில் MP3 கிடைக்கும். உங்கள் குரல் அடையாளம் உங்கள் browser-ல் மட்டும் இருக்கும்.",
+  "Your own voice from a 20-second reading.": "20 வினாடி வாசிப்பில் உங்கள் சொந்த குரல்.",
+  "Please confirm that this is your own voice.": "இது உங்கள் சொந்த குரல் என்று உறுதி செய்யுங்கள்.",
+  "The recording is too large. Please keep it under 30 seconds.": "பதிவு மிகப் பெரியது. 30 வினாடிக்குள் வையுங்கள்.",
+  "The recording is too long. Please keep it under 30 seconds.": "பதிவு மிக நீளம். 30 வினாடிக்குள் வையுங்கள்.",
+  "This reading check is not valid. Get a new passage and try again.": "இந்த சோதனை செல்லாது. புதிய பத்தி எடுத்து மீண்டும் முயலுங்கள்.",
+  "The passage expired (10 minutes). Get a new passage and read it again.": "பத்தியின் நேரம் முடிந்தது (10 நிமிடம்). புதிய பத்தி எடுத்து மீண்டும் படியுங்கள்.",
+  "Your saved voice is not valid. Please record your voice again.": "சேமித்த குரல் செல்லாது. உங்கள் குரலை மீண்டும் பதிவு செய்யுங்கள்.",
+  "Could not read the recording. Please record again.": "பதிவை படிக்க முடியவில்லை. மீண்டும் பதிவு செய்யுங்கள்.",
+  "We could not hear you. Move closer to the microphone and record again.": "உங்கள் குரல் கேட்கவில்லை. மைக் அருகில் வந்து மீண்டும் பதிவு செய்யுங்கள்.",
+  "The recording is too loud (distorted). Move a little away from the microphone and record again.": "பதிவு மிக சத்தமாக (உடைந்து) உள்ளது. மைக்கிலிருந்து சற்று விலகி மீண்டும் பதிவு செய்யுங்கள்.",
+  "Please read the whole passage. We need at least 8 seconds of your voice.": "முழு பத்தியையும் படியுங்கள். குறைந்தது 8 வினாடி உங்கள் குரல் தேவை.",
+  "The reading check is busy right now. Please try again in a minute.": "சரிபார்ப்பு இப்போது பிஸி. ஒரு நிமிடம் கழித்து முயலுங்கள்.",
+  "The words did not match the passage. Read the passage shown on the page, clearly, and try again.": "வார்த்தைகள் பத்தியுடன் பொருந்தவில்லை. பக்கத்தில் காட்டிய பத்தியை தெளிவாக படித்து மீண்டும் முயலுங்கள்.",
+  "Text is too long. Send 300 characters or less at a time.": "Text மிக நீளம். ஒரு முறைக்கு 300 எழுத்துகள் அல்லது குறைவாக அனுப்புங்கள்.",
   // clone
   "Voice cloning": "குரல் நகல்",
   "Clone your voice in seconds.": "உங்கள் குரலின் நகல் (விரைவில்).",
