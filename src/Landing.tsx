@@ -902,7 +902,7 @@ const PRODUCTS: { name: string; desc: string; href?: string; soon?: boolean; ico
   { name: "Speech to Text", desc: "Accurate transcripts and subtitles.", href: "#app", icon: "Captions", tint: "#4c6fff" },
   { name: "Voice Cloning", desc: "Your own voice from a 20-second reading.", href: "#clone", icon: "Fingerprint", tint: "#2fbf8f" },
   { name: "Dubbing", desc: "Translate video and keep every voice.", soon: true, icon: "Languages", tint: "#a55cf0" },
-  { name: "Voice Changer", desc: "Turn one recording into any voice.", soon: true, icon: "Wand", tint: "#e5484d" },
+  { name: "Voice Changer", desc: "Same words in a SANSA voice or your own voice.", href: "#changer", icon: "Wand", tint: "#e5484d" },
   { name: "Sound Effects", desc: "Generate sound from a text prompt.", soon: true, icon: "Drum", tint: "#d9822b" },
   { name: "Voice Agents", desc: "Ask SANSA about our tools, by voice. Phone agents soon.", href: "#agents", icon: "Bot", tint: "#4c6fff" },
   { name: "Audio Cleanup", desc: "Remove noise and isolate clear speech.", href: "#cleanup", icon: "Sparkles", tint: "#2fbf8f" },
@@ -1745,6 +1745,273 @@ export function Clone() {
       </div>
     </section>
   );
+}
+
+/* ------------------------------------------------------------------ voice changer */
+/*
+ * Any recording -> the same words in a SANSA voice, or in the visitor's own cloned voice (signed print from above).
+ * There is no way to upload someone else's voice as the target. The file is decoded here, split at pauses into
+ * parts of up to 25 s (the engine and Cloudflare's 100 s limit), and the parts are changed one by one. The engine
+ * returns a signed print of the original speaker with the first part; later parts reuse it so all parts match.
+ */
+
+const CHANGE_MAX_S = 5 * 60;
+const PART_MAX_S = 25;
+const PART_MIN_S = 15;
+type ChangeTarget = "female" | "male" | "me";
+
+/** Split 48 kHz audio at the quietest 50 ms between PART_MIN_S and PART_MAX_S, so no word is cut. */
+function splitAtPauses(x: Float32Array, rate = 48000): Float32Array[] {
+  const parts: Float32Array[] = [];
+  const win = Math.round(rate * 0.05);
+  let a = 0;
+  while (x.length - a > PART_MAX_S * rate) {
+    let best = a + PART_MAX_S * rate;
+    let bestE = Infinity;
+    for (let s = a + PART_MIN_S * rate; s + win <= a + PART_MAX_S * rate; s += win) {
+      let e = 0;
+      for (let i = s; i < s + win; i++) e += x[i] * x[i];
+      if (e < bestE) {
+        bestE = e;
+        best = s + Math.floor(win / 2);
+      }
+    }
+    parts.push(x.subarray(a, best));
+    a = best;
+  }
+  parts.push(x.subarray(a));
+  return parts;
+}
+
+/** 48 kHz mono -> 24 kHz 16-bit WAV (keeps the voice bright; the converter works at 22 kHz). */
+function wav24k(x48: Float32Array): Blob {
+  const n = Math.floor(x48.length / 2);
+  const buf = new ArrayBuffer(44 + n * 2);
+  const v = new DataView(buf);
+  const s = (o: number, tx: string) => [...tx].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  s(0, "RIFF");
+  v.setUint32(4, 36 + n * 2, true);
+  s(8, "WAVEfmt ");
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true);
+  v.setUint32(24, 24000, true);
+  v.setUint32(28, 48000, true);
+  v.setUint16(32, 2, true);
+  v.setUint16(34, 16, true);
+  s(36, "data");
+  v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) {
+    const a = (x48[2 * i] + x48[2 * i + 1]) / 2;
+    v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, a)) * 0x7fff, true);
+  }
+  return new Blob([buf], { type: "audio/wav" });
+}
+
+export function VoiceChanger() {
+  const [file, setFile] = useState<File | null>(null);
+  const [to, setTo] = useState<ChangeTarget>("female");
+  const [consent, setConsent] = useState(false);
+  const [busy, setBusy] = useState<{ part: number; of: number } | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [out, setOut] = useState<{ url: string; orig: string } | null>(null);
+  const abort = useRef<AbortController | null>(null);
+  const own = loadVoice();
+
+  useEffect(() => () => abort.current?.abort(), []);
+  useEffect(
+    () => () => {
+      if (out) {
+        URL.revokeObjectURL(out.url);
+        URL.revokeObjectURL(out.orig);
+      }
+    },
+    [out],
+  );
+
+  const run = async () => {
+    if (busy) {
+      abort.current?.abort();
+      return;
+    }
+    if (!file || !consent) return;
+    if (to === "me" && !own) {
+      setErr(t("Make your own voice first in Voice Cloning above.", "முதலில் மேலே உள்ள Voice Cloning-ல் உங்கள் குரலை உருவாக்குங்கள்."));
+      return;
+    }
+    const ctrl = new AbortController();
+    abort.current = ctrl;
+    setErr(null);
+    setOut(null);
+    try {
+      const { decodeMono48k } = await import("./cleanup");
+      const x = await decodeMono48k(file);
+      if (x.length / 48000 > CHANGE_MAX_S) {
+        throw new Error(t("Please choose a recording of 5 minutes or less.", "5 நிமிடம் அல்லது அதற்குக் குறைவான பதிவைத் தேர்ந்தெடுங்கள்."));
+      }
+      if (x.length / 48000 < 1) throw new Error(t("This recording is too short.", "இந்தப் பதிவு மிகவும் சிறியது."));
+      const parts = splitAtPauses(x);
+      const mp3s: Blob[] = [];
+      let source = "";
+      for (let i = 0; i < parts.length; i++) {
+        setBusy({ part: i + 1, of: parts.length });
+        const headers: Record<string, string> = { "Content-Type": "audio/wav" };
+        if (to === "me" && own) {
+          headers["X-Print"] = own.print;
+          headers["X-Sig"] = own.sig;
+        }
+        if (source) headers["X-Source"] = source;
+        let r: Response | null = null;
+        for (let attempt = 0; attempt < 4; attempt++) {
+          r = await fetch(`/tts/change?consent=1&lang=ta&to=${to}`, { method: "POST", headers, body: wav24k(parts[i]), signal: ctrl.signal });
+          if (r.status !== 429 && r.status < 500) break;
+          await new Promise((ok) => setTimeout(ok, 5000 * (attempt + 1)));
+        }
+        if (!r || !r.ok) {
+          // a silent part (music, pause) is skipped only when it is not the first one with speech
+          const raw = r ? String((await r.clone().json().catch(() => ({}))).detail ?? "") : "";
+          if (r && r.status === 400 && /silent|enough speech/i.test(raw) && parts.length > 1) {
+            const { wav48k } = await import("./cleanup");
+            mp3s.push(wav48k(new Float32Array(parts[i].length)));
+            continue;
+          }
+          if (r && /record your voice again/i.test(raw)) throw new Error(tr(raw));
+          throw new Error(r ? await apiError(r) : "");
+        }
+        source = source || r.headers.get("X-Source") || "";
+        mp3s.push(await r.blob());
+      }
+      const blob = mp3s.every((b) => b.type === "audio/mpeg") ? new Blob(mp3s, { type: "audio/mpeg" }) : await joinAudio(mp3s);
+      setOut({ url: URL.createObjectURL(blob), orig: URL.createObjectURL(file) });
+    } catch (e) {
+      if (!ctrl.signal.aborted)
+        setErr(e instanceof Error && e.message ? e.message : t("Could not change this recording. Please try again.", "இந்தப் பதிவை மாற்ற முடியவில்லை. மீண்டும் முயலுங்கள்."));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const choices: [ChangeTarget, string, string][] = [
+    ["female", "SANSA female", "SANSA பெண் குரல்"],
+    ["male", "SANSA male", "SANSA ஆண் குரல்"],
+    ["me", "My own voice", "என் சொந்த குரல்"],
+  ];
+
+  return (
+    <section id="changer" className="sec">
+      <div className="split">
+        <div className="split-copy">
+          <span className="eyebrow at">{tr("Voice Changer")}</span>
+          <h2>{t("Same words, a new voice.", "அதே வார்த்தைகள், புதிய குரல்.")}</h2>
+          <p>
+            {t(
+              "Upload a recording (up to 5 minutes). We keep your words, timing and feeling, and change only the voice: to a SANSA voice, or to your own cloned voice.",
+              "ஒரு பதிவை upload செய்யுங்கள் (5 நிமிடம் வரை). வார்த்தைகள், வேகம், உணர்வு அப்படியே இருக்கும்; குரல் மட்டும் மாறும்: SANSA குரலாக, அல்லது உங்கள் clone குரலாக.",
+            )}
+          </p>
+          <p className="clone-rules">
+            {t(
+              "You can only change to a SANSA voice or your own voice, never to someone else's. Your recording is not saved on our server.",
+              "SANSA குரலாகவோ உங்கள் சொந்த குரலாகவோ மட்டுமே மாற்ற முடியும், வேறொருவரின் குரலாக அல்ல. உங்கள் பதிவு எங்கள் server-ல் சேமிக்கப்படாது.",
+            )}
+          </p>
+        </div>
+
+        <div className="panel">
+          <label className="btn-outline changer-file">
+            <Ic.Upload /> {file ? file.name : t("Choose a recording", "பதிவைத் தேர்ந்தெடு")}
+            <input
+              type="file"
+              accept="audio/*,video/*,.opus,.ogg,.m4a,.mp3,.wav,.aac,.mp4"
+              hidden
+              disabled={!!busy}
+              onChange={(e) => {
+                setFile(e.target.files?.[0] ?? null);
+                setOut(null);
+                setErr(null);
+              }}
+            />
+          </label>
+
+          <div className="changer-voices" role="radiogroup" aria-label={t("New voice", "புதிய குரல்")}>
+            {choices.map(([k, en, ta]) => (
+              <button
+                key={k}
+                role="radio"
+                aria-checked={to === k}
+                className={to === k ? "chip on" : "chip"}
+                onClick={() => setTo(k)}
+                disabled={!!busy || (k === "me" && !own)}
+                title={k === "me" && !own ? t("Make your voice in Voice Cloning first", "முதலில் Voice Cloning-ல் உங்கள் குரலை உருவாக்குங்கள்") : undefined}
+              >
+                {t(en, ta)}
+              </button>
+            ))}
+          </div>
+
+          <label className="check clone-consent">
+            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} disabled={!!busy} />
+            <span>
+              {t(
+                "I have the right to use this recording, and I will not use the result to mislead anyone.",
+                "இந்தப் பதிவைப் பயன்படுத்த எனக்கு உரிமை உண்டு. இதை வைத்து யாரையும் ஏமாற்ற மாட்டேன்.",
+              )}
+            </span>
+          </label>
+
+          <div className="clone-actions">
+            <button className="btn-rec" onClick={() => void run()} disabled={!busy && (!file || !consent)}>
+              {busy ? <><Ic.Loader className="ico spin" /> {t("Cancel", "ரத்து")}</> : <><Ic.Wand /> {t("Change the voice", "குரலை மாற்று")}</>}
+            </button>
+          </div>
+
+          {busy && (
+            <>
+              <div className="clone-prog" aria-hidden="true">
+                <div style={{ width: `${Math.round(((busy.part - 1) / busy.of) * 100)}%` }} />
+              </div>
+              <span role="status" className="small">
+                {t(`Changing part ${busy.part} of ${busy.of}… about 20 seconds each`, `பகுதி ${busy.part} / ${busy.of} மாறுகிறது… ஒவ்வொன்றுக்கும் சுமார் 20 வினாடி`)}
+              </span>
+            </>
+          )}
+
+          {out && (
+            <div className="changer-out">
+              <span className="eyebrow small">{t("Before", "முன்")}</span>
+              <audio controls src={out.orig} />
+              <span className="eyebrow small">{t("After", "பின்")}</span>
+              <audio controls src={out.url} />
+              <a className="btn-outline" href={out.url} download="sansa-voice-changer.mp3">
+                <Ic.Download /> {t("Download MP3", "MP3 பதிவிறக்கு")}
+              </a>
+            </div>
+          )}
+
+          <span className="mono small">{t("AI voice. Tell your listeners when a voice is AI.", "AI குரல். கேட்பவர்களுக்கு இது AI குரல் என்று சொல்லுங்கள்.")}</span>
+
+          {err && (
+            <p className="clone-err" role="alert">
+              {err}
+            </p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** Join MP3 parts and silent WAV gaps into one WAV (only used when a silent part was skipped). */
+async function joinAudio(parts: Blob[]): Promise<Blob> {
+  const { decodeMono48k, wav48k } = await import("./cleanup");
+  const pcm = await Promise.all(parts.map((p) => decodeMono48k(p)));
+  const all = new Float32Array(pcm.reduce((n, p) => n + p.length, 0));
+  let o = 0;
+  for (const p of pcm) {
+    all.set(p, o);
+    o += p.length;
+  }
+  return wav48k(all);
 }
 
 /* ------------------------------------------------------------------ voice agents */
