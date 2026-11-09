@@ -20,7 +20,7 @@ const TANGLISH = new Set(
     "pannunga sollu sollunga solunga theriyuma theriyum theriyala illa illaya aagum aaguma aagudhu kudu kudunga podu kelu " +
     "naan nee neenga unga ungaluku enga eppo epo yaaru yaru evlo evvalavu evalavu sari seri vanakkam nandri romba nalla " +
     "pesu pesunga padi padinga paaru paarunga edhu ethu edhuku ethuku yen yean mudiyuma mudiyum mudiyadhu kaasu panam " +
-    "vaanga varum varuma iruntha irundha thaan dhaan idhu ithu adhu athu inga ange konjam vena venam aa aah bro machan maaruma maarum maathu maathunga maathi kidaikkum kidaikuma").split(" "),
+    "vaanga varum varuma iruntha irundha thaan dhaan idhu ithu adhu athu inga ange konjam vena venam aa aah bro machan maaruma maarum maathu maathunga maathi kidaikkum kidaikuma sariya sariyaa padikkuma padikuma padikkum padikum pesuma pesum").split(" "),
 );
 
 export function detectLang(text: string): Lang {
@@ -223,8 +223,18 @@ const INTENTS: Intent[] = [
     tam: "இன்னும் தேதி சொல்ல முடியல. Instagram-ல sansaai.in-ஐ follow பண்ணுங்க, அல்லது contact page-ல கேளுங்க.",
   },
   {
+    id: "numbers",
+    kw: ["read numbers", "numbers like", "say numbers", "numbers correctly", "read dates", "read the date", "read time", "read times", "read money",
+      "read prices", "read rupees", "phone numbers", "english words", "dates", "digits", "numbers", "number padikkuma", "numbers padikkuma"],
+    ta: ["எண்களை", "எண்கள்", "தேதியை", "நேரத்தை", "ரூபாயை"],
+    en: "Yes. The voices read numbers and money like ₹1,250 or ₹12.50, percent, dates like 08/11/2026, times like 10:30 AM or 14:45, phone numbers digit by digit, kg and km, and English words inside Tamil text, like office or meeting.",
+    tam: "ஆமா. Voices எண்கள், ₹1,250, ₹12.50 மாதிரி பணம், சதவீதம், 08/11/2026 மாதிரி தேதி, 10:30 AM, 14:45 மாதிரி நேரம், phone number-ஐ ஒவ்வொரு digit-ஆ, kg, km, தமிழ் வாக்கியத்துல உள்ள office, meeting மாதிரி English வார்த்தைகள் எல்லாம் சரியா படிக்கும்.",
+    next: ["Play Kavya", "Long text to MP3"],
+  },
+  {
     id: "privacy",
-    kw: ["privacy", "private", "safe", "secure", "security", "data", "saved", "save my", "store", "stored", "uploaded", "upload my audio", "keep my", "delete"],
+    kw: ["privacy", "private", "safe", "secure", "security", "data", "saved", "save my", "store", "stored", "uploaded", "upload my audio", "keep my", "delete",
+      "recording stored", "recording saved", "audio stored", "audio saved", "voice stored", "voice saved", "is my recording", "is my audio", "is my voice", "do you keep", "do you store"],
     ta: ["தனியுரிமை", "பாதுகாப்", "சேமிக்க", "save ஆகுமா"],
     en: "Your audio isn't saved. Tamil speech and text for voices go to SANSA's own server only to process them. Audio cleanup, Word and PDF files, and saved texts and progress stay in your own browser.",
     tam: "உங்க audio save ஆகாது. Tamil speech, voice text process பண்ண மட்டும் SANSA server-க்கு போகும். Audio cleanup, Word, PDF files, save பண்ணின text, progress எல்லாம் உங்க browser-லயே இருக்கும்.",
