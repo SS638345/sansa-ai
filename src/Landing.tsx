@@ -488,9 +488,10 @@ export function SiteHeader() {
         </a>
         <div className="site-links">
           <a href="#tools">{tr("Products")}</a>
-          <a href="#voices">{tr("Text to Speech")}</a>
+          <a href="#app">{tr("Speech to Text")}</a>
           <a href="#voices">{tr("Voices")}</a>
-          <a href="#api">{tr("API")}</a>
+          <a href="#clone">{tr("Voice Cloning")}</a>
+          <a href="#cleanup">{tr("Audio Cleanup")}</a>
         </div>
         <button className="search-btn" onClick={h.openPal} aria-label={tr("Search")}>
           <SearchIcon />
@@ -536,11 +537,11 @@ export function SiteHeader() {
           <a href="#voices" onClick={close}>
             {tr("Text to Speech")}
           </a>
-          <a href="#voices" onClick={close}>
-            {tr("Voices")}
+          <a href="#clone" onClick={close}>
+            {tr("Voice Cloning")}
           </a>
-          <a href="#api" onClick={close}>
-            {tr("API")}
+          <a href="#cleanup" onClick={close}>
+            {tr("Audio Cleanup")}
           </a>
           <a href="#faq" onClick={close}>
             {tr("FAQ")}
@@ -991,9 +992,6 @@ export function Voices() {
           <span className="eyebrow at">{tr("Voice library")}</span>
           <h2>{tr("Hear our voices.")}</h2>
         </div>
-        <a className="at-link" href="#voices">
-          {tr("Browse all voices →")}
-        </a>
       </div>
       <div className="filters" role="radiogroup" aria-label={tr("Voice language")}>
         {FILTERS.map((f) => (
@@ -1898,7 +1896,7 @@ export function Cta() {
     <section className="cta-wrap">
       <div className="cta">
         <h2>{tr("Give your words a voice.")}</h2>
-        <a href={SIGNUP}>{tr("Start free")}</a>
+        <a href="#voices">{tr("Start free")}</a>
       </div>
     </section>
   );
@@ -1926,15 +1924,14 @@ export function SiteFooter() {
             <span className="foot-tag">{tr("AI voices for English and Tamil.")}</span>
           </div>
           <Col title={tr("Products")}>
+            <a href="#app">{tr("Speech to Text")}</a>
             <a href="#voices">{tr("Text to Speech")}</a>
-            <a href="#voices">{tr("Voice Library")}</a>
             <a href="#cleanup">{tr("Audio Cleanup")}</a>
             <a href="#clone">{tr("Voice Cloning")}</a>
             <a href="#agents">{tr("Voice Agents")}</a>
           </Col>
           <Col title={tr("Developers")}>
             <a href="#api">{tr("API")}</a>
-            <a href="#api">{tr("SDKs")}</a>
           </Col>
           <Col title={tr("Support")}>
             <a href={CONTACT}>{tr("Help Centre")}</a>
@@ -1943,7 +1940,6 @@ export function SiteFooter() {
           </Col>
           <Col title={tr("Company")}>
             <a href="./about">{tr("About")}</a>
-            <a href="./about">{tr("Careers")}</a>
             <a href="./privacy">{tr("Privacy")}</a>
             <a href="./terms">{tr("Terms of Use")}</a>
             <a href="./refund">{tr("Refund")}</a>

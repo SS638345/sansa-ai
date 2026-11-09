@@ -695,7 +695,7 @@ export default function App() {
             {copied ? <><Ic.Check /> {tr("Copied ✓").replace(/\s*✓$/, "")}</> : <><Ic.Copy /> {tr("Copy")}</>}
           </button>
           <button onClick={() => download(text, "txt")} disabled={!text}>
-            {tr("Download .txt")}
+            <Ic.Download /> {tr("Download .txt")}
           </button>
           <button
             onClick={() => {
@@ -709,7 +709,7 @@ export default function App() {
             disabled={!text}
             title={tr("Download as a Word document")}
           >
-            Word
+            <Ic.FileText /> Word
           </button>
           <button
             onClick={() => {
@@ -718,14 +718,14 @@ export default function App() {
             disabled={!text}
             title={tr("Opens a print page: choose Save as PDF")}
           >
-            PDF
+            <Ic.Printer /> PDF
           </button>
           <button onClick={() => void shareToWhatsApp(text)} disabled={!text} title={tr("Share the text on WhatsApp")}>
-            WhatsApp
+            <Ic.Message /> WhatsApp
           </button>
           {/[A-Za-z]{3,}/.test(text) && (
             <button onClick={() => setText(tanglishToTamil(text))} title={tr("Turn Tanglish typed in English letters into Tamil letters")}>
-              {tr("Tanglish → தமிழ்")}
+              <Ic.Languages /> {tr("Tanglish → தமிழ்")}
             </button>
           )}
           {readAloudSupported && (
