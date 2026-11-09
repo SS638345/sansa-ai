@@ -52,6 +52,25 @@ const LANGUAGES: readonly Language[] = [
   { id: "auto", api: "", label: "Mixed / auto detect (upload/record)" },
 ];
 
+/**
+ * SEO landing pages (scripts/build-seo-pages.mjs, seo/pages.mjs) carry their text as real HTML in #seo-page,
+ * with data-tool naming the tool. On those pages the app shows the header, that one tool between the
+ * page's top and bottom text (moved into place by SeoSlot), and the footer.
+ */
+type SeoTool = "tts" | "tts-ta" | "stt" | "stt-ta" | "audio" | "clone" | "changer" | "cleanup";
+const SEO_TOOL = (typeof document !== "undefined" ? document.getElementById("seo-page")?.dataset.tool : undefined) as SeoTool | undefined;
+
+function SeoSlot({ id }: { id: "seo-top" | "seo-bottom" }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = document.getElementById(id);
+    if (el && ref.current && el.parentElement !== ref.current) ref.current.appendChild(el);
+    const wrap = document.getElementById("seo-page");
+    if (wrap && !wrap.children.length) wrap.hidden = true;
+  }, [id]);
+  return <div ref={ref} className="seo-slot" />;
+}
+
 type Mode = "live" | "record" | "upload";
 
 const STORAGE_KEY = "vtt.transcript";
@@ -97,9 +116,9 @@ const FAQ: { q: string; a: string }[] = [
 
 export default function App() {
   useUi(); // re-render the whole page when the site language changes
-  const [langId, setLangId] = useState(() => load("vtt.lang", "ta-IN"));
+  const [langId, setLangId] = useState(() => (SEO_TOOL === "stt-ta" ? "ta-IN" : load("vtt.lang", "ta-IN")));
   const lang = LANGUAGES.find((l) => l.id === langId) ?? LANGUAGES[0];
-  const [mode, setMode] = useState<Mode>(liveDictationSupported ? "live" : "record");
+  const [mode, setMode] = useState<Mode>(SEO_TOOL === "audio" ? "upload" : liveDictationSupported ? "live" : "record");
   const [text, setText] = useState(() => load(STORAGE_KEY, ""));
   const [status, setStatus] = useState<Status>({ ai: false, model: null });
   const [busy, setBusy] = useState(false);
@@ -434,364 +453,383 @@ export default function App() {
           : "Loading speech model…"
         : "Converting to text…";
 
+  const sttBlock = (
+      <div className="page" id="app">
+        <div className="app-head">
+          <div>
+            <span className="eyebrow at">{tr("Voice to text")}</span>
+            <h2>{tr("Try it now.")}</h2>
+          </div>
+          <span className={`pill ${status.ai || SANSA_ENGINE_URL ? "ok" : ""}`}>
+            {SANSA_ENGINE_URL ? tr("Tamil engine on") : status.ai ? tr("AI on") : tr("Free mode")}
+          </span>
+        </div>
+
+        <main className="app">
+
+        <section className="card controls">
+          <label className="field">
+            <span>{tr("Language")}</span>
+            <select value={langId} onChange={(e) => setLangId(e.target.value)} disabled={live.listening || busy}>
+              {LANGUAGES.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {tr(l.label)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="tabs" role="tablist">
+            <button role="tab" aria-selected={mode === "live"} onClick={() => switchMode("live")}>
+              {tr("Live mic")} <small>{tr("free")}</small>
+            </button>
+            <button role="tab" aria-selected={mode === "record"} onClick={() => switchMode("record")}>
+              {tr("Record & convert")} <small>{status.ai ? "AI" : tr("free")}</small>
+            </button>
+            <button role="tab" aria-selected={mode === "upload"} onClick={() => switchMode("upload")}>
+              {tr("Upload audio")} <small>{status.ai ? "AI" : tr("free")}</small>
+            </button>
+          </div>
+
+          {mode === "live" && (
+            <div className="action">
+              {liveDictationSupported ? (
+                <>
+                  <button
+                    className={`mic ${live.listening ? "on" : ""}`}
+                    onClick={live.listening ? live.stop : live.start}
+                    aria-pressed={live.listening}
+                  >
+                    {live.listening ? <><Ic.Stop /> {bare(tr("■ Stop"))}</> : <><Ic.Mic /> {bare(tr("● Start speaking"))}</>}
+                  </button>
+                  <p className="hint">
+                    {live.listening ? tr("Listening… text appears as you speak.") : tr("Words appear live while you talk. Works best in Chrome.")}
+                  </p>
+                </>
+              ) : (
+                <p className="hint">{tr("This browser has no live speech engine. Open in Chrome, or use Record & convert.")}</p>
+              )}
+            </div>
+          )}
+
+          {mode === "record" && (
+            <div className="action">
+              <button
+                className={`mic ${recorder.state === "recording" ? "on" : ""}`}
+                onClick={toggleRecord}
+                disabled={busy}
+              >
+                {busy ? <><Ic.Loader className="ico spin" /> {tr("Working…")}</> : recorder.state === "recording" ? <><Ic.Stop /> {tr("Stop & convert")}</> : <><Ic.Record /> {tr("Record")}</>}
+              </button>
+              <p className="hint">{tr("Record first, then the whole clip is converted. More accurate for long talks.")}</p>
+            </div>
+          )}
+
+          {mode === "upload" && (
+            <div className="action">
+              <label className={`upload ${busy ? "disabled" : ""}`}>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="audio/*,video/*,.m4a,.mp3,.wav,.ogg,.oga,.opus,.webm,.flac,.mp4,.aac,.amr,.3gp,.3ga,.wma,.caf,.aif,.aiff,.mkv,.mov,.avi,.wmv,.m4b,.mpga"
+                  disabled={busy}
+                  onChange={(e) => void onFile(e.target.files?.[0])}
+                />
+                {busy ? "Working…" : "Choose audio or video"}
+              </label>
+              <p className="hint">
+                {useSansa ? tr("Any audio: mp3, m4a, wav, ogg, opus, amr, aac, WhatsApp voice notes and call recordings, up to about 1 hour (200 MB). Long recordings show the time left and continue where they stopped if the page closes. Video for subtitles up to 300 MB.") : tr("Any audio: mp3, m4a, wav, ogg, opus, amr, aac, flac, wma, 3gp, WhatsApp voice notes, call recordings (max 25 MB), or mp4/webm video for subtitles (max 300 MB). First time, the speech model downloads once.")}
+              </p>
+            </div>
+          )}
+
+          {mode !== "live" && (
+            <div className="field">
+              <span>{tr("Speech engine")}</span>
+              <div className={SANSA_ENGINE_URL ? "tabs two" : "tabs"} role="radiogroup">
+                <button role="radio" aria-checked={engine === "sansa"} aria-selected={engine === "sansa"} onClick={() => setEngine("sansa")} disabled={busy}>
+                  {tr("SANSA engine")} <small>{tr("free, accurate")}</small>
+                </button>
+                {!SANSA_ENGINE_URL && (
+                  <button role="radio" aria-checked={engine === "sarvam"} aria-selected={engine === "sarvam"} onClick={() => setEngine("sarvam")} disabled={busy}>
+                    Sarvam AI <small>needs key</small>
+                  </button>
+                )}
+                <button role="radio" aria-checked={engine === "free"} aria-selected={engine === "free"} onClick={() => setEngine("free")} disabled={busy}>
+                  {tr("On-device")} <small>{tr("free, offline")}</small>
+                </button>
+              </div>
+            </div>
+          )}
+          {mode !== "live" && engine === "sarvam" && !SARVAM_PROXY_URL && (
+            <label className="field">
+              <span>
+                Your Sarvam API key (saved only in this browser).{" "}
+                <a href="https://dashboard.sarvam.ai" target="_blank" rel="noreferrer">
+                  Get a free key
+                </a>
+              </span>
+              <input
+                type="password"
+                autoComplete="off"
+                placeholder="Paste key here"
+                value={sarvamKey}
+                onChange={(e) => setSarvamKey(e.target.value)}
+                disabled={busy}
+              />
+            </label>
+          )}
+          {mode !== "live" && engine === "sansa" && !SANSA_ENGINE_URL && (
+            <label className="field">
+              <span>SANSA engine address (your Hugging Face Space URL)</span>
+              <input
+                type="url"
+                autoComplete="off"
+                placeholder="https://your-name-sansa-engine.hf.space"
+                value={engineUrl}
+                onChange={(e) => setEngineUrl(e.target.value)}
+                disabled={busy}
+              />
+            </label>
+          )}
+          {mode !== "live" && engine !== "free" && !remoteSupports && (
+            <p className="notice">{remoteName} does not support this language, so the free on-device engine is used.</p>
+          )}
+          {mode !== "live" && engine !== "free" && remoteSupports && !remoteReady && (
+            <p className="notice">
+              {engine === "sansa" ? "Add the SANSA engine address above" : "Add your Sarvam key above"}, or switch to On-device. Until then the free engine is used.
+            </p>
+          )}
+          {mode !== "live" && !useSarvam && !useSansa && lang.api === null && (
+            <p className="notice">{tr("This language works only with Live mic. Upload and record are not available for it yet.")}</p>
+          )}
+          {mode !== "live" && !status.ai && !useSarvam && !useSansa && (
+            <label className="field">
+              <span>{tr("Speech model (runs free on your device, downloads once)")}</span>
+              <select value={localModel} onChange={(e) => setLocalModel(e.target.value)} disabled={busy}>
+                {modelChoices.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {tr(m.label)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {mode !== "live" && (
+            <div className="field">
+              <span>{tr("Write the text as")}</span>
+              <div className="tabs four" role="radiogroup">
+                {STYLES.map((x) => (
+                  <button
+                    key={x.id}
+                    role="radio"
+                    aria-checked={style === x.id}
+                    aria-selected={style === x.id}
+                    onClick={() => setStyle(x.id)}
+                    disabled={busy}
+                  >
+                    {tr(x.label)} <small>{tr(x.note)}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {mode !== "live" && translateLocally && engine !== "free" && (
+            <p className="notice">English translation runs free on this device with Whisper{engine === "sarvam" ? " until a Sarvam key is added" : ""}.</p>
+          )}
+
+          <div className="options">
+            {mode !== "live" && (
+              <label className="check">
+                <input type="checkbox" checked={denoise} onChange={(e) => setDenoise(e.target.checked)} disabled={busy} />
+                <span>
+                  {tr("Clean background noise")} <small>{tr("fan, traffic, crowd. Free, on this device")}</small>
+                </span>
+              </label>
+            )}
+            <label className="check">
+              <input type="checkbox" checked={clean} onChange={(e) => setClean(e.target.checked)} />
+              <span>
+                {tr("Clean mode")} <small>{tr("removes umm, uh, ம்ம் and tidies punctuation")}</small>
+              </span>
+            </label>
+            <button className="link" onClick={() => setShowWords((v) => !v)} aria-expanded={showWords}>
+              {tr("My words")}{rules.length ? ` (${rules.length})` : ""} {showWords ? <Ic.ChevronUp /> : <Ic.ChevronDown />}
+            </button>
+          </div>
+          {showWords && (
+            <label className="field">
+              <span>
+                {tr("Names and words SANSA should spell right, one per line. Write")} <code>wrong = Right</code> {tr("to fix a common mistake.")}
+              </span>
+              <textarea
+                className="small"
+                rows={4}
+                value={myWords}
+                onChange={(e) => setMyWords(e.target.value)}
+                placeholder={"SANSA\nsansa ai = SANSA AI\nChennai"}
+              />
+            </label>
+          )}
+
+          {busy && (
+            <p className="notice" role="status">
+              {busyText}
+              {progress?.stage === "transcribing" && " Long files can take a few minutes."}
+            </p>
+          )}
+          {shownError && <p className="error" role="alert">{shownError}</p>}
+        </section>
+
+        <section className="card output">
+          <div className="output-head">
+            <h2>{tr("Text")}</h2>
+            <span className="count">{(() => { const n = text.trim() ? text.trim().split(/\s+/).length : 0; return t(`${n} words`, `${n} சொற்கள்`); })()}</span>
+          </div>
+          <textarea
+            dir="auto"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={tr("Your text will appear here. You can edit it too.")}
+            rows={12}
+          />
+          {live.interim && <p className="interim">{live.interim}</p>}
+          {segments.some((s) => s.check) && (
+            <p className="check-note" role="status">
+              {tr(
+                "⚠ {n} line(s) may have mistakes. They are marked yellow in the Timeline below. Tap one to hear it, then fix the text above.",
+              ).replace("{n}", String(segments.filter((s) => s.check).length))}
+            </p>
+          )}
+          {segments.length > 0 && <Timeline segments={segments} mediaUrl={audioUrl} kind={media?.kind ?? "audio"} />}
+          {notice && <p className="notice">{notice}</p>}
+          <div className="row">
+            <button onClick={copy} disabled={!text}>
+              {copied ? <><Ic.Check /> {tr("Copied ✓").replace(/\s*✓$/, "")}</> : <><Ic.Copy /> {tr("Copy")}</>}
+            </button>
+            <button onClick={() => download(text, "txt")} disabled={!text}>
+              <Ic.Download /> {tr("Download .txt")}
+            </button>
+            <button
+              onClick={() => {
+                const name = `sansa-voice-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, "-")}.docx`;
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(toDocx(text, tr("Sansa Voice text")));
+                a.download = name;
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+              }}
+              disabled={!text}
+              title={tr("Download as a Word document")}
+            >
+              <Ic.FileText /> Word
+            </button>
+            <button
+              onClick={() => {
+                if (!printAsPdf(text, tr("Sansa Voice text"))) setNotice(tr("Allow pop-ups for this site to save as PDF."));
+              }}
+              disabled={!text}
+              title={tr("Opens a print page: choose Save as PDF")}
+            >
+              <Ic.Printer /> PDF
+            </button>
+            <button onClick={() => void shareToWhatsApp(text)} disabled={!text} title={tr("Share the text on WhatsApp")}>
+              <Ic.Message /> WhatsApp
+            </button>
+            {/[A-Za-z]{3,}/.test(text) && (
+              <button onClick={() => setText(tanglishToTamil(text))} title={tr("Turn Tanglish typed in English letters into Tamil letters")}>
+                <Ic.Languages /> {tr("Tanglish → தமிழ்")}
+              </button>
+            )}
+            {readAloudSupported && (
+              <span className="read">
+                <button onClick={() => void toggleRead()} disabled={!text && !stopSpeaking} aria-pressed={Boolean(stopSpeaking)}>
+                  {stopSpeaking ? <><Ic.Stop /> {bare(tr("■ Stop reading"))}</> : <><Ic.Volume /> {bare(tr("🔊 Read aloud"))}</>}
+                </button>
+                <select value={readRate} onChange={(e) => setReadRate(Number(e.target.value))} aria-label={tr("Reading speed")}>
+                  <option value={0.8}>{tr("Slow")}</option>
+                  <option value={1}>{tr("Normal")}</option>
+                  <option value={1.25}>{tr("Fast")}</option>
+                </select>
+              </span>
+            )}
+            {segments.length > 0 && (
+              <>
+                <button onClick={() => download(toSrt(segments), "srt")} title={tr("Subtitles for YouTube, Instagram, video editors")}>
+                  {tr("Subtitles .srt")}
+                </button>
+                <button onClick={() => download(toVtt(segments), "vtt")} title={tr("Subtitles for web video")}>
+                  .vtt
+                </button>
+                <button onClick={() => download(toTimedText(segments), "txt")} title={tr("Text with a time before each line")}>
+                  {tr("Text with times")}
+                </button>
+              </>
+            )}
+            <button
+              className="ghost"
+              onClick={() => {
+                setText("");
+                setSegments([]);
+                setMedia(null);
+                setCurrentId(null);
+              }}
+              disabled={!text && !segments.length}
+            >
+              {tr("Clear")}
+            </button>
+          </div>
+        </section>
+
+        <Library
+          items={library}
+          currentId={currentId}
+          onOpen={openItem}
+          onRename={(item, title) => void renameItem(item, title).then(refreshLibrary)}
+          onDelete={(item) => void deleteItem(item.id).then(refreshLibrary)}
+        />
+        </main>
+        <p className="privacy-line">
+          {tr("Your saved texts stay only in your own browser.")}
+          {SANSA_ENGINE_URL ? tr(" Tamil audio is sent to our own server only to convert it, and is not saved.") : ""}
+        </p>
+      </div>
+  );
+
   return (
     <>
     <HomeProvider theme={theme} onToggleTheme={toggleTheme} onStartDictation={() => talkLive(langId === "auto" ? "ta-IN" : langId)}>
       <SiteHeader />
       <LoginGate />
-      <Hero />
-      <Products />
-      <HowItWorks />
+      {SEO_TOOL ? (
+        <>
+          <SeoSlot id="seo-top" />
+          {(SEO_TOOL === "stt" || SEO_TOOL === "stt-ta" || SEO_TOOL === "audio") && sttBlock}
+          {SEO_TOOL === "tts" && <Voices />}
+          {SEO_TOOL === "tts-ta" && <Voices initialFilter="Tamil" />}
+          {SEO_TOOL === "clone" && <Clone />}
+          {SEO_TOOL === "changer" && <VoiceChanger />}
+          {SEO_TOOL === "cleanup" && <Cleanup />}
+          <SeoSlot id="seo-bottom" />
+        </>
+      ) : (
+        <>
+          <Hero />
+          <Products />
+          <HowItWorks />
 
-    <div className="page" id="app">
-      <div className="app-head">
-        <div>
-          <span className="eyebrow at">{tr("Voice to text")}</span>
-          <h2>{tr("Try it now.")}</h2>
-        </div>
-        <span className={`pill ${status.ai || SANSA_ENGINE_URL ? "ok" : ""}`}>
-          {SANSA_ENGINE_URL ? tr("Tamil engine on") : status.ai ? tr("AI on") : tr("Free mode")}
-        </span>
-      </div>
+          {sttBlock}
 
-      <main className="app">
-
-      <section className="card controls">
-        <label className="field">
-          <span>{tr("Language")}</span>
-          <select value={langId} onChange={(e) => setLangId(e.target.value)} disabled={live.listening || busy}>
-            {LANGUAGES.map((l) => (
-              <option key={l.id} value={l.id}>
-                {tr(l.label)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <div className="tabs" role="tablist">
-          <button role="tab" aria-selected={mode === "live"} onClick={() => switchMode("live")}>
-            {tr("Live mic")} <small>{tr("free")}</small>
-          </button>
-          <button role="tab" aria-selected={mode === "record"} onClick={() => switchMode("record")}>
-            {tr("Record & convert")} <small>{status.ai ? "AI" : tr("free")}</small>
-          </button>
-          <button role="tab" aria-selected={mode === "upload"} onClick={() => switchMode("upload")}>
-            {tr("Upload audio")} <small>{status.ai ? "AI" : tr("free")}</small>
-          </button>
-        </div>
-
-        {mode === "live" && (
-          <div className="action">
-            {liveDictationSupported ? (
-              <>
-                <button
-                  className={`mic ${live.listening ? "on" : ""}`}
-                  onClick={live.listening ? live.stop : live.start}
-                  aria-pressed={live.listening}
-                >
-                  {live.listening ? <><Ic.Stop /> {bare(tr("■ Stop"))}</> : <><Ic.Mic /> {bare(tr("● Start speaking"))}</>}
-                </button>
-                <p className="hint">
-                  {live.listening ? tr("Listening… text appears as you speak.") : tr("Words appear live while you talk. Works best in Chrome.")}
-                </p>
-              </>
-            ) : (
-              <p className="hint">{tr("This browser has no live speech engine. Open in Chrome, or use Record & convert.")}</p>
-            )}
-          </div>
-        )}
-
-        {mode === "record" && (
-          <div className="action">
-            <button
-              className={`mic ${recorder.state === "recording" ? "on" : ""}`}
-              onClick={toggleRecord}
-              disabled={busy}
-            >
-              {busy ? <><Ic.Loader className="ico spin" /> {tr("Working…")}</> : recorder.state === "recording" ? <><Ic.Stop /> {tr("Stop & convert")}</> : <><Ic.Record /> {tr("Record")}</>}
-            </button>
-            <p className="hint">{tr("Record first, then the whole clip is converted. More accurate for long talks.")}</p>
-          </div>
-        )}
-
-        {mode === "upload" && (
-          <div className="action">
-            <label className={`upload ${busy ? "disabled" : ""}`}>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="audio/*,video/*,.m4a,.mp3,.wav,.ogg,.oga,.opus,.webm,.flac,.mp4,.aac,.amr,.3gp,.3ga,.wma,.caf,.aif,.aiff,.mkv,.mov,.avi,.wmv,.m4b,.mpga"
-                disabled={busy}
-                onChange={(e) => void onFile(e.target.files?.[0])}
-              />
-              {busy ? "Working…" : "Choose audio or video"}
-            </label>
-            <p className="hint">
-              {useSansa ? tr("Any audio: mp3, m4a, wav, ogg, opus, amr, aac, WhatsApp voice notes and call recordings, up to about 1 hour (200 MB). Long recordings show the time left and continue where they stopped if the page closes. Video for subtitles up to 300 MB.") : tr("Any audio: mp3, m4a, wav, ogg, opus, amr, aac, flac, wma, 3gp, WhatsApp voice notes, call recordings (max 25 MB), or mp4/webm video for subtitles (max 300 MB). First time, the speech model downloads once.")}
-            </p>
-          </div>
-        )}
-
-        {mode !== "live" && (
-          <div className="field">
-            <span>{tr("Speech engine")}</span>
-            <div className={SANSA_ENGINE_URL ? "tabs two" : "tabs"} role="radiogroup">
-              <button role="radio" aria-checked={engine === "sansa"} aria-selected={engine === "sansa"} onClick={() => setEngine("sansa")} disabled={busy}>
-                {tr("SANSA engine")} <small>{tr("free, accurate")}</small>
-              </button>
-              {!SANSA_ENGINE_URL && (
-                <button role="radio" aria-checked={engine === "sarvam"} aria-selected={engine === "sarvam"} onClick={() => setEngine("sarvam")} disabled={busy}>
-                  Sarvam AI <small>needs key</small>
-                </button>
-              )}
-              <button role="radio" aria-checked={engine === "free"} aria-selected={engine === "free"} onClick={() => setEngine("free")} disabled={busy}>
-                {tr("On-device")} <small>{tr("free, offline")}</small>
-              </button>
-            </div>
-          </div>
-        )}
-        {mode !== "live" && engine === "sarvam" && !SARVAM_PROXY_URL && (
-          <label className="field">
-            <span>
-              Your Sarvam API key (saved only in this browser).{" "}
-              <a href="https://dashboard.sarvam.ai" target="_blank" rel="noreferrer">
-                Get a free key
-              </a>
-            </span>
-            <input
-              type="password"
-              autoComplete="off"
-              placeholder="Paste key here"
-              value={sarvamKey}
-              onChange={(e) => setSarvamKey(e.target.value)}
-              disabled={busy}
-            />
-          </label>
-        )}
-        {mode !== "live" && engine === "sansa" && !SANSA_ENGINE_URL && (
-          <label className="field">
-            <span>SANSA engine address (your Hugging Face Space URL)</span>
-            <input
-              type="url"
-              autoComplete="off"
-              placeholder="https://your-name-sansa-engine.hf.space"
-              value={engineUrl}
-              onChange={(e) => setEngineUrl(e.target.value)}
-              disabled={busy}
-            />
-          </label>
-        )}
-        {mode !== "live" && engine !== "free" && !remoteSupports && (
-          <p className="notice">{remoteName} does not support this language, so the free on-device engine is used.</p>
-        )}
-        {mode !== "live" && engine !== "free" && remoteSupports && !remoteReady && (
-          <p className="notice">
-            {engine === "sansa" ? "Add the SANSA engine address above" : "Add your Sarvam key above"}, or switch to On-device. Until then the free engine is used.
-          </p>
-        )}
-        {mode !== "live" && !useSarvam && !useSansa && lang.api === null && (
-          <p className="notice">{tr("This language works only with Live mic. Upload and record are not available for it yet.")}</p>
-        )}
-        {mode !== "live" && !status.ai && !useSarvam && !useSansa && (
-          <label className="field">
-            <span>{tr("Speech model (runs free on your device, downloads once)")}</span>
-            <select value={localModel} onChange={(e) => setLocalModel(e.target.value)} disabled={busy}>
-              {modelChoices.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {tr(m.label)}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        {mode !== "live" && (
-          <div className="field">
-            <span>{tr("Write the text as")}</span>
-            <div className="tabs four" role="radiogroup">
-              {STYLES.map((x) => (
-                <button
-                  key={x.id}
-                  role="radio"
-                  aria-checked={style === x.id}
-                  aria-selected={style === x.id}
-                  onClick={() => setStyle(x.id)}
-                  disabled={busy}
-                >
-                  {tr(x.label)} <small>{tr(x.note)}</small>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {mode !== "live" && translateLocally && engine !== "free" && (
-          <p className="notice">English translation runs free on this device with Whisper{engine === "sarvam" ? " until a Sarvam key is added" : ""}.</p>
-        )}
-
-        <div className="options">
-          {mode !== "live" && (
-            <label className="check">
-              <input type="checkbox" checked={denoise} onChange={(e) => setDenoise(e.target.checked)} disabled={busy} />
-              <span>
-                {tr("Clean background noise")} <small>{tr("fan, traffic, crowd. Free, on this device")}</small>
-              </span>
-            </label>
-          )}
-          <label className="check">
-            <input type="checkbox" checked={clean} onChange={(e) => setClean(e.target.checked)} />
-            <span>
-              {tr("Clean mode")} <small>{tr("removes umm, uh, ம்ம் and tidies punctuation")}</small>
-            </span>
-          </label>
-          <button className="link" onClick={() => setShowWords((v) => !v)} aria-expanded={showWords}>
-            {tr("My words")}{rules.length ? ` (${rules.length})` : ""} {showWords ? <Ic.ChevronUp /> : <Ic.ChevronDown />}
-          </button>
-        </div>
-        {showWords && (
-          <label className="field">
-            <span>
-              {tr("Names and words SANSA should spell right, one per line. Write")} <code>wrong = Right</code> {tr("to fix a common mistake.")}
-            </span>
-            <textarea
-              className="small"
-              rows={4}
-              value={myWords}
-              onChange={(e) => setMyWords(e.target.value)}
-              placeholder={"SANSA\nsansa ai = SANSA AI\nChennai"}
-            />
-          </label>
-        )}
-
-        {busy && (
-          <p className="notice" role="status">
-            {busyText}
-            {progress?.stage === "transcribing" && " Long files can take a few minutes."}
-          </p>
-        )}
-        {shownError && <p className="error" role="alert">{shownError}</p>}
-      </section>
-
-      <section className="card output">
-        <div className="output-head">
-          <h2>{tr("Text")}</h2>
-          <span className="count">{(() => { const n = text.trim() ? text.trim().split(/\s+/).length : 0; return t(`${n} words`, `${n} சொற்கள்`); })()}</span>
-        </div>
-        <textarea
-          dir="auto"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={tr("Your text will appear here. You can edit it too.")}
-          rows={12}
-        />
-        {live.interim && <p className="interim">{live.interim}</p>}
-        {segments.some((s) => s.check) && (
-          <p className="check-note" role="status">
-            {tr(
-              "⚠ {n} line(s) may have mistakes. They are marked yellow in the Timeline below. Tap one to hear it, then fix the text above.",
-            ).replace("{n}", String(segments.filter((s) => s.check).length))}
-          </p>
-        )}
-        {segments.length > 0 && <Timeline segments={segments} mediaUrl={audioUrl} kind={media?.kind ?? "audio"} />}
-        {notice && <p className="notice">{notice}</p>}
-        <div className="row">
-          <button onClick={copy} disabled={!text}>
-            {copied ? <><Ic.Check /> {tr("Copied ✓").replace(/\s*✓$/, "")}</> : <><Ic.Copy /> {tr("Copy")}</>}
-          </button>
-          <button onClick={() => download(text, "txt")} disabled={!text}>
-            <Ic.Download /> {tr("Download .txt")}
-          </button>
-          <button
-            onClick={() => {
-              const name = `sansa-voice-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, "-")}.docx`;
-              const a = document.createElement("a");
-              a.href = URL.createObjectURL(toDocx(text, tr("Sansa Voice text")));
-              a.download = name;
-              a.click();
-              setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-            }}
-            disabled={!text}
-            title={tr("Download as a Word document")}
-          >
-            <Ic.FileText /> Word
-          </button>
-          <button
-            onClick={() => {
-              if (!printAsPdf(text, tr("Sansa Voice text"))) setNotice(tr("Allow pop-ups for this site to save as PDF."));
-            }}
-            disabled={!text}
-            title={tr("Opens a print page: choose Save as PDF")}
-          >
-            <Ic.Printer /> PDF
-          </button>
-          <button onClick={() => void shareToWhatsApp(text)} disabled={!text} title={tr("Share the text on WhatsApp")}>
-            <Ic.Message /> WhatsApp
-          </button>
-          {/[A-Za-z]{3,}/.test(text) && (
-            <button onClick={() => setText(tanglishToTamil(text))} title={tr("Turn Tanglish typed in English letters into Tamil letters")}>
-              <Ic.Languages /> {tr("Tanglish → தமிழ்")}
-            </button>
-          )}
-          {readAloudSupported && (
-            <span className="read">
-              <button onClick={() => void toggleRead()} disabled={!text && !stopSpeaking} aria-pressed={Boolean(stopSpeaking)}>
-                {stopSpeaking ? <><Ic.Stop /> {bare(tr("■ Stop reading"))}</> : <><Ic.Volume /> {bare(tr("🔊 Read aloud"))}</>}
-              </button>
-              <select value={readRate} onChange={(e) => setReadRate(Number(e.target.value))} aria-label={tr("Reading speed")}>
-                <option value={0.8}>{tr("Slow")}</option>
-                <option value={1}>{tr("Normal")}</option>
-                <option value={1.25}>{tr("Fast")}</option>
-              </select>
-            </span>
-          )}
-          {segments.length > 0 && (
-            <>
-              <button onClick={() => download(toSrt(segments), "srt")} title={tr("Subtitles for YouTube, Instagram, video editors")}>
-                {tr("Subtitles .srt")}
-              </button>
-              <button onClick={() => download(toVtt(segments), "vtt")} title={tr("Subtitles for web video")}>
-                .vtt
-              </button>
-              <button onClick={() => download(toTimedText(segments), "txt")} title={tr("Text with a time before each line")}>
-                {tr("Text with times")}
-              </button>
-            </>
-          )}
-          <button
-            className="ghost"
-            onClick={() => {
-              setText("");
-              setSegments([]);
-              setMedia(null);
-              setCurrentId(null);
-            }}
-            disabled={!text && !segments.length}
-          >
-            {tr("Clear")}
-          </button>
-        </div>
-      </section>
-
-      <Library
-        items={library}
-        currentId={currentId}
-        onOpen={openItem}
-        onRename={(item, title) => void renameItem(item, title).then(refreshLibrary)}
-        onDelete={(item) => void deleteItem(item.id).then(refreshLibrary)}
-      />
-      </main>
-      <p className="privacy-line">
-        {tr("Your saved texts stay only in your own browser.")}
-        {SANSA_ENGINE_URL ? tr(" Tamil audio is sent to our own server only to convert it, and is not saved.") : ""}
-      </p>
-    </div>
-
-      <Cleanup />
-      <Voices />
-      <Clone />
-      <VoiceChanger />
-      <Agents />
-      <Api />
-      <Faq items={FAQ} />
-      <Cta />
+          <Cleanup />
+          <Voices />
+          <Clone />
+          <VoiceChanger />
+          <Agents />
+          <Api />
+          <Faq items={FAQ} />
+          <Cta />
+        </>
+      )}
       <SiteFooter />
     </HomeProvider>
     </>

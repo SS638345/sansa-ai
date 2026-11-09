@@ -401,6 +401,7 @@ export function HomeProvider({
   const goTo = useCallback((id: string) => {
     const el = document.getElementById(id);
     if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 70, behavior: "smooth" });
+    else window.location.href = `/#${id}`; // section lives on the home page (we are on a tool page)
   }, []);
 
   useEffect(() => {
@@ -486,11 +487,11 @@ export function SiteHeader() {
           SANSA
         </a>
         <div className="site-links">
-          <a href="#tools">{tr("Products")}</a>
-          <a href="#app">{tr("Speech to Text")}</a>
-          <a href="#voices">{tr("Voices")}</a>
-          <a href="#clone">{tr("Voice Cloning")}</a>
-          <a href="#cleanup">{tr("Audio Cleanup")}</a>
+          <a href="/#tools">{tr("Products")}</a>
+          <a href="/speech-to-text">{tr("Speech to Text")}</a>
+          <a href="/text-to-speech">{tr("Voices")}</a>
+          <a href="/voice-cloning">{tr("Voice Cloning")}</a>
+          <a href="/audio-cleanup">{tr("Audio Cleanup")}</a>
         </div>
         <button className="search-btn" onClick={h.openPal} aria-label={tr("Search")}>
           <SearchIcon />
@@ -522,22 +523,22 @@ export function SiteHeader() {
       </nav>
       {menu && (
         <div className="mobile-menu" id="mobile-menu">
-          <a href="#tools" onClick={close}>
+          <a href="/#tools" onClick={close}>
             {tr("Products")}
           </a>
-          <a href="#app" onClick={close}>
+          <a href="/speech-to-text" onClick={close}>
             {tr("Speech to Text")}
           </a>
-          <a href="#voices" onClick={close}>
+          <a href="/text-to-speech" onClick={close}>
             {tr("Text to Speech")}
           </a>
-          <a href="#clone" onClick={close}>
+          <a href="/voice-cloning" onClick={close}>
             {tr("Voice Cloning")}
           </a>
-          <a href="#cleanup" onClick={close}>
+          <a href="/audio-cleanup" onClick={close}>
             {tr("Audio Cleanup")}
           </a>
-          <a href="#faq" onClick={close}>
+          <a href="/#faq" onClick={close}>
             {tr("FAQ")}
           </a>
           <div className="mobile-menu-actions">
@@ -887,14 +888,14 @@ export function Hero() {
 /* ------------------------------------------------------------------ products */
 
 const PRODUCTS: { name: string; desc: string; href?: string; soon?: boolean; icon: keyof typeof Ic; tint: string }[] = [
-  { name: "Text to Speech", desc: "Natural voiceovers from any script.", href: "#voices", icon: "AudioLines", tint: "#f2b950" },
-  { name: "Speech to Text", desc: "Accurate transcripts and subtitles.", href: "#app", icon: "Captions", tint: "#4c6fff" },
-  { name: "Voice Cloning", desc: "Your own voice from a 20-second reading.", href: "#clone", icon: "Fingerprint", tint: "#2fbf8f" },
+  { name: "Text to Speech", desc: "Natural voiceovers from any script.", href: "/text-to-speech", icon: "AudioLines", tint: "#f2b950" },
+  { name: "Speech to Text", desc: "Accurate transcripts and subtitles.", href: "/speech-to-text", icon: "Captions", tint: "#4c6fff" },
+  { name: "Voice Cloning", desc: "Your own voice from a 20-second reading.", href: "/voice-cloning", icon: "Fingerprint", tint: "#2fbf8f" },
   { name: "Dubbing", desc: "Translate video and keep every voice.", soon: true, icon: "Languages", tint: "#a55cf0" },
-  { name: "Voice Changer", desc: "Same words in a SANSA voice or your own voice.", href: "#changer", icon: "Wand", tint: "#e5484d" },
+  { name: "Voice Changer", desc: "Same words in a SANSA voice or your own voice.", href: "/voice-changer", icon: "Wand", tint: "#e5484d" },
   { name: "Sound Effects", desc: "Generate sound from a text prompt.", soon: true, icon: "Drum", tint: "#d9822b" },
   { name: "Voice Agents", desc: "Ask SANSA about our tools, by voice. Phone agents soon.", href: "#agents", icon: "Bot", tint: "#4c6fff" },
-  { name: "Audio Cleanup", desc: "Remove noise and isolate clear speech.", href: "#cleanup", icon: "Sparkles", tint: "#2fbf8f" },
+  { name: "Audio Cleanup", desc: "Remove noise and isolate clear speech.", href: "/audio-cleanup", icon: "Sparkles", tint: "#2fbf8f" },
 ];
 
 export function Products() {
@@ -969,9 +970,9 @@ const FILTERS = ["All", "Tamil", "English"];
 const voiceSample = (v: Voice) =>
   v.lang === "ta" ? `வணக்கம், நான் ${tr(v.name)}. இது SANSA-வின் தமிழ் குரல்.` : `Hi, I'm ${tr(v.name)}. This is how I sound on SANSA.`;
 
-export function Voices() {
+export function Voices({ initialFilter = "All" }: { initialFilter?: "All" | "Tamil" | "English" } = {}) {
   const h = useHome();
-  const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState<string>(initialFilter);
   const [note, setNote] = useState<string | null>(null);
   const list = VOICES.filter((v) => filter === "All" || (filter === "Tamil" ? v.lang === "ta" : v.lang === "en"));
   return (
@@ -2180,18 +2181,22 @@ export function SiteFooter() {
             <span className="foot-tag">{tr("AI voices for English and Tamil.")}</span>
           </div>
           <Col title={tr("Products")}>
-            <a href="#app">{tr("Speech to Text")}</a>
-            <a href="#voices">{tr("Text to Speech")}</a>
-            <a href="#cleanup">{tr("Audio Cleanup")}</a>
-            <a href="#clone">{tr("Voice Cloning")}</a>
-            <a href="#agents">{tr("Voice Agents")}</a>
+            <a href="/speech-to-text">{tr("Speech to Text")}</a>
+            <a href="/audio-to-text">{tr("Audio to Text")}</a>
+            <a href="/tamil-speech-to-text">{tr("Tamil Speech to Text")}</a>
+            <a href="/text-to-speech">{tr("Text to Speech")}</a>
+            <a href="/tamil-text-to-speech">{tr("Tamil Text to Speech")}</a>
+            <a href="/voice-cloning">{tr("Voice Cloning")}</a>
+            <a href="/voice-changer">{tr("Voice Changer")}</a>
+            <a href="/audio-cleanup">{tr("Audio Cleanup")}</a>
+            <a href="/#agents">{tr("Voice Agents")}</a>
           </Col>
           <Col title={tr("Developers")}>
-            <a href="#api">{tr("API")}</a>
+            <a href="/#api">{tr("API")}</a>
           </Col>
           <Col title={tr("Support")}>
             <a href={CONTACT}>{tr("Help Centre")}</a>
-            <a href="#faq">{tr("FAQ")}</a>
+            <a href="/#faq">{tr("FAQ")}</a>
             <button className="link auth-btn foot-login" onClick={() => askLogin()}>{t("Sign in", "உள்நுழை")}</button>
           </Col>
           <Col title={tr("Company")}>
