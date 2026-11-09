@@ -60,6 +60,7 @@ const TA: Record<string, string> = {
   Search: "தேடு",
   "Log in": "உள்நுழை",
   "Sign up": "பதிவு செய்",
+  "Sign in with Google": "Google-ல் உள்நுழை",
   FAQ: "கேள்விகள்",
   "Switch light / dark": "வெளிச்சம் / இருள் மாற்று",
   "Open menu": "மெனு திற",
@@ -68,7 +69,7 @@ const TA: Record<string, string> = {
   "AI Voice Platform": "தமிழ் AI குரல் தளம்",
   "Lifelike AI voices in English and Tamil.": "தமிழிலும் ஆங்கிலத்திலும் இயல்பான AI குரல்கள்.",
   "Text to speech, speech to text, voice cloning and dubbing — in one studio and one API.":
-    "எழுத்தை குரலாக்கு, பேச்சை எழுத்தாக்கு, சத்தம் நீக்கு. இலவசம், பதிவு தேவையில்லை.",
+    "எழுத்தை குரலாக்கு, பேச்சை எழுத்தாக்கு, சத்தம் நீக்கு. இலவசம்.",
   "Talk live": "நேரடியாக பேசு",
   "▶ Speak": "▶ கேள்",
   "■ Stop": "■ நிறுத்து",
@@ -279,8 +280,8 @@ const TA: Record<string, string> = {
   "English (US)": "ஆங்கிலம் (US)",
   "Mixed / auto detect (upload/record)": "கலவை / தானாக கண்டறி (upload/பதிவு)",
   // honest copy (2026-11-08) + FAQ
-  "Text to speech, speech to text and noise cleanup in Tamil and English. Free, no sign up needed.":
-    "எழுத்தை குரலாக்கு, பேச்சை எழுத்தாக்கு, சத்தம் நீக்கு — தமிழிலும் ஆங்கிலத்திலும். இலவசம், பதிவு தேவையில்லை.",
+  "Text to speech, speech to text and noise cleanup in Tamil and English. Free, sign in with Google.":
+    "எழுத்தை குரலாக்கு, பேச்சை எழுத்தாக்கு, சத்தம் நீக்கு — தமிழிலும் ஆங்கிலத்திலும். இலவசம், Google-ல் உள்நுழைந்தால் போதும்.",
   "Pick a Tamil or English voice from the library.": "நூலகத்திலிருந்து தமிழ் அல்லது ஆங்கில குரலை தேர்ந்தெடுங்கள்.",
   "Listen, change the words, and play again until it sounds right.": "கேட்டு, வார்த்தைகளை மாற்றி, சரியாக ஒலிக்கும் வரை மீண்டும் கேளுங்கள்.",
   "Download the audio as an mp3.": "குரலை mp3-ஆக பதிவிறக்குங்கள்.",
@@ -303,7 +304,7 @@ const TA: Record<string, string> = {
   "How does voice cloning work?": "குரல் நகல் எப்படி வேலை செய்யும்?",
   "Voice cloning is coming soon. Today you can record a short sample on this page and play it back.":
     "குரல் நகல் விரைவில் வரும். இப்போது இந்த பக்கத்தில் சின்ன மாதிரியை பதிவு செய்து கேட்கலாம்.",
-  "Yes. Every tool on this site is free and needs no sign up.": "ஆம். இந்த தளத்தில் உள்ள எல்லா கருவிகளும் இலவசம், பதிவு தேவையில்லை.",
+  "Yes. Every tool on this site is free. You only sign in with your Google account.": "ஆம். இந்த தளத்தில் உள்ள எல்லா கருவிகளும் இலவசம். உங்கள் Google account-ல் உள்நுழைந்தால் போதும்.",
   "How do I convert a WhatsApp voice note?": "WhatsApp voice note-ஐ எப்படி எழுத்தாக்குவது?",
   "Upload the voice note, or on Android add this site to your home screen and use Share > Sansa Voice from WhatsApp.":
     "Voice note-ஐ upload செய்யுங்கள். Android-இல் இந்த தளத்தை home screen-இல் சேர்த்து, WhatsApp-இல் Share > Sansa Voice தேர்ந்தெடுங்கள்.",
@@ -320,7 +321,7 @@ const TA: Record<string, string> = {
   "words": "சொற்கள்",
   "every conversion is saved here": "ஒவ்வொரு மாற்றமும் இங்கே சேமிக்கப்படும்",
   "{n} saved on this device": "இந்த device-இல் {n} சேமிப்பு",
-  "No account. Your saved texts stay only in your own browser.": "Account தேவையில்லை. சேமித்த எழுத்துகள் உங்கள் browser-இல் மட்டும் இருக்கும்.",
+  "Your saved texts stay only in your own browser.": "சேமித்த எழுத்துகள் உங்கள் browser-இல் மட்டும் இருக்கும்.",
   " Tamil audio is sent to our own server only to convert it, and is not saved.": " தமிழ் audio மாற்றுவதற்காக மட்டும் எங்கள் server-க்கு போகும், சேமிக்கப்படாது.",
   "Choose another": "வேறு file",
   "Choose file": "File தேர்ந்தெடு",

@@ -11,6 +11,7 @@ import { denoiseToWav } from "./denoise";
 import { deleteItem, listItems, renameItem, saveItem, titleFrom, type LibraryItem } from "./libraryStore";
 import { readAloudSupported, speak, voiceFor, voicesReady } from "./readAloud";
 import { Library } from "./Library";
+import { LoginGate } from "./auth";
 import { Agents, Api, Cleanup, Clone, Cta, Faq, Hero, HomeProvider, HowItWorks, Products, SiteFooter, VoiceChanger, SiteHeader, Voices, useTheme } from "./Landing";
 import { t, tr, useUi } from "./i18n";
 import { tanglishToTamil } from "./translit";
@@ -86,7 +87,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Is it free?",
-    a: "Yes. Every tool on this site is free and needs no sign up.",
+    a: "Yes. Every tool on this site is free. You only sign in with your Google account.",
   },
   {
     q: "How do I convert a WhatsApp voice note?",
@@ -437,6 +438,7 @@ export default function App() {
     <>
     <HomeProvider theme={theme} onToggleTheme={toggleTheme} onStartDictation={() => talkLive(langId === "auto" ? "ta-IN" : langId)}>
       <SiteHeader />
+      <LoginGate />
       <Hero />
       <Products />
       <HowItWorks />
@@ -777,7 +779,7 @@ export default function App() {
       />
       </main>
       <p className="privacy-line">
-        {tr("No account. Your saved texts stay only in your own browser.")}
+        {tr("Your saved texts stay only in your own browser.")}
         {SANSA_ENGINE_URL ? tr(" Tamil audio is sent to our own server only to convert it, and is not saved.") : ""}
       </p>
     </div>

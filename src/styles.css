@@ -603,3 +603,23 @@ kbd { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; pa
 .changer-out { display: grid; gap: 8px; margin-top: 12px; }
 .changer-out audio { width: 100%; height: 40px; }
 .changer-out a.btn-outline { text-decoration: none; justify-self: start; }
+
+/* Google sign-in (auth.tsx) */
+.auth-btn.auth-wait { width: 72px; height: 34px; display: inline-block; }
+.auth-btn.btn-dark { border: 0; cursor: pointer; font: inherit; }
+.auth-btn.wide { width: 100%; justify-content: center; }
+.auth-user { position: relative; display: inline-flex; }
+.auth-me { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; padding: 2px; cursor: pointer; color: var(--text); font: inherit; border-radius: 999px; }
+.auth-me img, .auth-initial { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); font-weight: 700; object-fit: cover; }
+.auth-menu { position: absolute; right: 0; top: calc(100% + 8px); min-width: 220px; display: grid; gap: 8px; padding: 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 16px 40px rgb(0 0 0 / 0.18); z-index: 60; }
+.auth-menu .auth-email { font-size: 0.82rem; color: var(--muted); overflow-wrap: anywhere; }
+.auth-menu button { font: inherit; text-align: left; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; }
+.auth-modal { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px; background: rgb(0 0 0 / 0.55); backdrop-filter: blur(4px); }
+.auth-card { position: relative; width: min(400px, 100%); display: grid; justify-items: center; gap: 12px; text-align: center; padding: 28px 22px 20px; border-radius: 22px; background: var(--card); color: var(--text); border: 1px solid var(--line); box-shadow: 0 30px 80px rgb(0 0 0 / 0.35); }
+.auth-card h2 { margin: 4px 0 0; font-size: 1.35rem; }
+.auth-card p { margin: 0; color: var(--muted); }
+.auth-x { position: absolute; top: 10px; right: 10px; background: none; border: 0; color: var(--muted); cursor: pointer; padding: 6px; border-radius: 8px; }
+.auth-gbtn { min-height: 44px; display: grid; place-items: center; }
+.auth-fine { font-size: 0.78rem; }
+.auth-fine a { color: inherit; }
+.foot-login { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
