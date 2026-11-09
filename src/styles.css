@@ -565,3 +565,26 @@ kbd { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; pa
 .clone-out audio { flex: 1; min-width: 220px; height: 40px; }
 .clone-err { margin: 0; padding: 10px 12px; border-radius: 10px; background: rgb(229 72 77 / 0.1); color: var(--danger); font-size: 14px; line-height: 1.5; }
 .clone-out a.btn-outline { text-decoration: none; }
+
+/* ---- icons (Lucide, 2026-11-08): one clean line-icon set everywhere ---- */
+.ico { display: inline-block; vertical-align: -0.2em; flex-shrink: 0; }
+.ico-rec { display: inline-block; border-radius: 50%; background: #e5484d; flex-shrink: 0; vertical-align: -0.05em; }
+.btn-rec .ico-rec { background: #c62828; }
+.ico.spin { animation: ico-spin 0.9s linear infinite; }
+@keyframes ico-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ico.spin { animation: none; } }
+.btn-rec, .btn-outline, .btn-amber, .btn-ghost, .play-btn, .theme-btn, .agent-mic, .agent-close, .search-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.prod-ico { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; color: var(--tint); background: color-mix(in srgb, var(--tint) 14%, transparent); border: 1px solid color-mix(in srgb, var(--tint) 28%, transparent); }
+.prod:hover .prod-ico { background: color-mix(in srgb, var(--tint) 22%, transparent); }
+.pal-head .ico { color: var(--muted); }
+
+/* ---- phones: shorter, neater page (2026-11-09) ---- */
+@media (max-width: 600px) {
+  .prod-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .prod { padding: 16px 14px; gap: 6px; border-radius: 16px; }
+  .prod-ico { width: 40px; height: 40px; border-radius: 12px; }
+  .prod-name { font-size: 15px; margin-top: 12px; line-height: 1.25; }
+  .prod-name em { top: 16px; right: 12px; font-size: 9px; padding: 2px 6px; }
+  .prod-desc { font-size: 13px; line-height: 1.45; }
+  .foot-grid { grid-template-columns: 1fr 1fr; gap: 24px 16px; }
+}

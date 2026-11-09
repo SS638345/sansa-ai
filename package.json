@@ -18,6 +18,7 @@
     "@shiguredo/rnnoise-wasm": "^2025.1.5",
     "dotenv": "^16.4.5",
     "express": "^5.1.0",
+    "lucide-react": "0.468.0",
     "openai": "^5.3.0",
     "three": "^0.149.0"
   },

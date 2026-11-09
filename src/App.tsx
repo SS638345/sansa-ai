@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { liveDictationSupported, useLiveDictation } from "./hooks/useLiveDictation";
 import { useVoiceRecorder } from "./hooks/useVoiceRecorder";
 import { LOCAL_MODELS, TAMIL_MODEL, transcribeLocally, type LocalProgress } from "./localWhisper";
+import { Ic, bare } from "./icons";
 import { SARVAM_PROXY_URL, sarvamSupports, transcribeWithSarvam, type OutputStyle } from "./sarvam";
 import { SANSA_ENGINE_URL, SansaLanguageUnavailable, sansaSupports, transcribeWithSansa } from "./sansaEngine";
 import { keyTerms, parseMyWords, polish, toSrt, toTimedText, toVtt, type Segment, type Transcript } from "./transcript";
@@ -486,7 +487,7 @@ export default function App() {
                   onClick={live.listening ? live.stop : live.start}
                   aria-pressed={live.listening}
                 >
-                  {live.listening ? tr("■ Stop") : tr("● Start speaking")}
+                  {live.listening ? <><Ic.Stop /> {bare(tr("■ Stop"))}</> : <><Ic.Mic /> {bare(tr("● Start speaking"))}</>}
                 </button>
                 <p className="hint">
                   {live.listening ? tr("Listening… text appears as you speak.") : tr("Words appear live while you talk. Works best in Chrome.")}
@@ -505,7 +506,7 @@ export default function App() {
               onClick={toggleRecord}
               disabled={busy}
             >
-              {busy ? "Working…" : recorder.state === "recording" ? "■ Stop & convert" : "● Record"}
+              {busy ? <><Ic.Loader className="ico spin" /> {tr("Working…")}</> : recorder.state === "recording" ? <><Ic.Stop /> {tr("Stop & convert")}</> : <><Ic.Record /> {tr("Record")}</>}
             </button>
             <p className="hint">{tr("Record first, then the whole clip is converted. More accurate for long talks.")}</p>
           </div>
@@ -640,7 +641,7 @@ export default function App() {
             </span>
           </label>
           <button className="link" onClick={() => setShowWords((v) => !v)} aria-expanded={showWords}>
-            {tr("My words")}{rules.length ? ` (${rules.length})` : ""} {showWords ? "▴" : "▾"}
+            {tr("My words")}{rules.length ? ` (${rules.length})` : ""} {showWords ? <Ic.ChevronUp /> : <Ic.ChevronDown />}
           </button>
         </div>
         {showWords && (
@@ -691,7 +692,7 @@ export default function App() {
         {notice && <p className="notice">{notice}</p>}
         <div className="row">
           <button onClick={copy} disabled={!text}>
-            {copied ? tr("Copied ✓") : tr("Copy")}
+            {copied ? <><Ic.Check /> {tr("Copied ✓").replace(/\s*✓$/, "")}</> : <><Ic.Copy /> {tr("Copy")}</>}
           </button>
           <button onClick={() => download(text, "txt")} disabled={!text}>
             {tr("Download .txt")}
@@ -730,7 +731,7 @@ export default function App() {
           {readAloudSupported && (
             <span className="read">
               <button onClick={() => void toggleRead()} disabled={!text && !stopSpeaking} aria-pressed={Boolean(stopSpeaking)}>
-                {stopSpeaking ? tr("■ Stop reading") : tr("🔊 Read aloud")}
+                {stopSpeaking ? <><Ic.Stop /> {bare(tr("■ Stop reading"))}</> : <><Ic.Volume /> {bare(tr("🔊 Read aloud"))}</>}
               </button>
               <select value={readRate} onChange={(e) => setReadRate(Number(e.target.value))} aria-label={tr("Reading speed")}>
                 <option value={0.8}>{tr("Slow")}</option>

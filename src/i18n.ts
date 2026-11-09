@@ -156,6 +156,9 @@ const TA: Record<string, string> = {
   "The reading check is busy right now. Please try again in a minute.": "சரிபார்ப்பு இப்போது பிஸி. ஒரு நிமிடம் கழித்து முயலுங்கள்.",
   "The words did not match the passage. Read the passage shown on the page, clearly, and try again.": "வார்த்தைகள் பத்தியுடன் பொருந்தவில்லை. பக்கத்தில் காட்டிய பத்தியை தெளிவாக படித்து மீண்டும் முயலுங்கள்.",
   "Text is too long. Send 300 characters or less at a time.": "Text மிக நீளம். ஒரு முறைக்கு 300 எழுத்துகள் அல்லது குறைவாக அனுப்புங்கள்.",
+  "Working…": "வேலை நடக்கிறது…",
+  "Stop & convert": "நிறுத்தி மாற்று",
+  Record: "பதிவு",
   // clone
   "Voice cloning": "குரல் நகல்",
   "Clone your voice in seconds.": "உங்கள் குரலின் நகல் (விரைவில்).",

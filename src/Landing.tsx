@@ -12,6 +12,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import { readAloudSupported, voiceFor, voicesReady } from "./readAloud";
@@ -19,6 +20,7 @@ import { think, type Reply } from "./agentBrain";
 import { CLONE_MAX_CHARS, LONG_TEXT_MAX_CHARS, SPEAK_MAX_CHARS } from "./limits";
 import { setUi, t, tr, useUi } from "./i18n";
 import { tamilToTanglish } from "./translit";
+import { Ic, bare } from "./icons";
 
 type Theme = "light" | "dark";
 type Lang = "en" | "ta";
@@ -463,12 +465,7 @@ function OrbMark({ size = 28 }: { size?: number }) {
   return <img className="brand-mark" src="/brand/sansa-mark.svg" width={size} height={size} alt="" aria-hidden="true" />;
 }
 
-const SearchIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
-    <circle cx="11" cy="11" r="7" />
-    <path d="m20 20-3.5-3.5" />
-  </svg>
-);
+const SearchIcon = () => <Ic.Search size={16} />;
 
 export function SiteHeader() {
   const h = useHome();
@@ -516,7 +513,7 @@ export function SiteHeader() {
           {ui === "ta" ? "EN" : "தமிழ்"}
         </button>
         <button className="theme-btn" onClick={h.toggleTheme} title={tr("Switch light / dark")} aria-label={tr("Switch light / dark")}>
-          {h.theme === "dark" ? "☀" : "☾"}
+          {h.theme === "dark" ? <Ic.Sun /> : <Ic.Moon />}
         </button>
         <button
           className="menu-btn"
@@ -819,7 +816,20 @@ export function Hero() {
     setNote(null);
   };
   const onSpeak = async () => setNote(await h.play("hero", text, cur));
-  const label = h.loadingId === "hero" ? tr("… Creating") : h.playing === "hero" ? tr("■ Stop") : tr("▶ Speak");
+  const label =
+    h.loadingId === "hero" ? (
+      <>
+        <Ic.Loader className="ico spin" /> {bare(tr("… Creating"))}
+      </>
+    ) : h.playing === "hero" ? (
+      <>
+        <Ic.Stop /> {bare(tr("■ Stop"))}
+      </>
+    ) : (
+      <>
+        <Ic.Play /> {bare(tr("▶ Speak"))}
+      </>
+    );
 
   return (
     <section className="hero2">
@@ -874,7 +884,7 @@ export function Hero() {
             {h.loadingId === "hero" ? tr("Creating your audio… the first one can take up to 20 seconds.") : note}
             {h.lastAudio?.id === "hero" && h.loadingId !== "hero" && (
               <a className="dl-link" href={h.lastAudio.url} download={h.lastAudio.name}>
-                {tr("⬇ Download mp3")}
+                <Ic.Download /> {bare(tr("⬇ Download mp3"))}
               </a>
             )}
           </p>
@@ -886,15 +896,15 @@ export function Hero() {
 
 /* ------------------------------------------------------------------ products */
 
-const PRODUCTS: { name: string; desc: string; href?: string; soon?: boolean }[] = [
-  { name: "Text to Speech", desc: "Natural voiceovers from any script.", href: "#voices" },
-  { name: "Speech to Text", desc: "Accurate transcripts and subtitles.", href: "#app" },
-  { name: "Voice Cloning", desc: "Your own voice from a 20-second reading.", href: "#clone" },
-  { name: "Dubbing", desc: "Translate video and keep every voice.", soon: true },
-  { name: "Voice Changer", desc: "Turn one recording into any voice.", soon: true },
-  { name: "Sound Effects", desc: "Generate sound from a text prompt.", soon: true },
-  { name: "Voice Agents", desc: "Assistants for calls and support.", href: "#agents" },
-  { name: "Audio Cleanup", desc: "Remove noise and isolate clear speech.", href: "#cleanup" },
+const PRODUCTS: { name: string; desc: string; href?: string; soon?: boolean; icon: keyof typeof Ic; tint: string }[] = [
+  { name: "Text to Speech", desc: "Natural voiceovers from any script.", href: "#voices", icon: "AudioLines", tint: "#f2b950" },
+  { name: "Speech to Text", desc: "Accurate transcripts and subtitles.", href: "#app", icon: "Captions", tint: "#4c6fff" },
+  { name: "Voice Cloning", desc: "Your own voice from a 20-second reading.", href: "#clone", icon: "Fingerprint", tint: "#2fbf8f" },
+  { name: "Dubbing", desc: "Translate video and keep every voice.", soon: true, icon: "Languages", tint: "#a55cf0" },
+  { name: "Voice Changer", desc: "Turn one recording into any voice.", soon: true, icon: "Wand", tint: "#e5484d" },
+  { name: "Sound Effects", desc: "Generate sound from a text prompt.", soon: true, icon: "Drum", tint: "#d9822b" },
+  { name: "Voice Agents", desc: "Assistants for calls and support.", href: "#agents", icon: "Bot", tint: "#4c6fff" },
+  { name: "Audio Cleanup", desc: "Remove noise and isolate clear speech.", href: "#cleanup", icon: "Sparkles", tint: "#2fbf8f" },
 ];
 
 export function Products() {
@@ -905,10 +915,13 @@ export function Products() {
         <h2>{tr("Everything you need to create with voice.")}</h2>
       </div>
       <div className="prod-grid">
-        {PRODUCTS.map((p, i) => {
+        {PRODUCTS.map((p) => {
+          const Icon = Ic[p.icon];
           const body = (
             <>
-              <span className="prod-orb" style={{ background: SW[i % SW.length] }} aria-hidden="true" />
+              <span className="prod-ico" style={{ "--tint": p.tint } as CSSProperties} aria-hidden="true">
+                <Icon size={22} />
+              </span>
               <span className="prod-name">
                 {tr(p.name)} {p.soon ? <em className="soon">{tr("Coming soon")}</em> : <em className="live">{tr("Live")}</em>}
               </span>
@@ -1007,7 +1020,7 @@ export function Voices() {
                 onFocus={() => warmVoice(v.lang)}
                 onClick={() => void h.play(v.id, voiceSample(v), v).then(setNote)}
               >
-                {busy ? "…" : on ? "■" : "▶"}
+                {busy ? <Ic.Loader className="ico spin" /> : on ? <Ic.Stop /> : <Ic.Play />}
               </button>
             </div>
           );
@@ -1165,7 +1178,7 @@ function LongTts() {
           ))}
         </select>
         <button className="btn-rec" onClick={() => void run()} disabled={!busy && !text.trim()}>
-          {busy ? tr("■ Stop") : tr("Create MP3")}
+          {busy ? <><Ic.Stop /> {bare(tr("■ Stop"))}</> : <><Ic.AudioLines /> {tr("Create MP3")}</>}
         </button>
       </div>
       {busy && (
@@ -1190,7 +1203,7 @@ function LongTts() {
           </p>
           <audio controls preload="metadata" src={result.url} />
           <a className="btn-dark dl-btn" href={result.url} download={result.name}>
-            {tr("⬇ Download MP3")}
+            <Ic.Download /> {bare(tr("⬇ Download MP3"))}
           </a>
         </div>
       )}
@@ -1362,7 +1375,7 @@ export function Cleanup() {
                 <audio controls preload="metadata" src={result.after} />
               </label>
               <a className="btn-dark dl-btn" href={result.after} download={tr(result.name)}>
-                {tr("⬇ Download clean audio (WAV)")}
+                <Ic.Download /> {bare(tr("⬇ Download clean audio (WAV)"))}
               </a>
               {file && /^video\//.test(file.type) && <small className="clean-note">{tr("For videos you get the cleaned sound as a WAV file.")}</small>}
             </div>
@@ -1666,7 +1679,7 @@ export function Clone() {
                   </div>
                   <div className="clone-actions">
                     <button className={phase === "recording" ? "btn-rec on" : "btn-rec"} onClick={() => void toggleRecord()} disabled={phase === "checking" || !consent}>
-                      {phase === "recording" ? t("■ Stop", "■ நிறுத்து") : phase === "checking" ? t("Checking…", "சரிபார்க்கிறது…") : t("● Record", "● பதிவு")}
+                      {phase === "recording" ? <><Ic.Stop /> {t("Stop", "நிறுத்து")}</> : phase === "checking" ? <><Ic.Loader className="ico spin" /> {t("Checking…", "சரிபார்க்கிறது…")}</> : <><Ic.Record /> {t("Record", "பதிவு")}</>}
                     </button>
                     {phase === "start" && (
                       <button className="btn-outline" onClick={() => void getPassage()}>
@@ -1708,14 +1721,14 @@ export function Clone() {
               </div>
               <div className="clone-actions">
                 <button className="btn-rec" onClick={() => void speak()} disabled={!making && !text.trim()}>
-                  {making ? t("■ Cancel", "■ ரத்து") : t("▶ Speak in my voice", "▶ என் குரலில் பேசு")}
+                  {making ? <><Ic.Loader className="ico spin" /> {t("Cancel", "ரத்து")}</> : <><Ic.Play /> {t("Speak in my voice", "என் குரலில் பேசு")}</>}
                 </button>
               </div>
               {out && (
                 <div className="clone-out">
                   <audio controls src={out.url} />
                   <a className="btn-outline" href={out.url} download="sansa-my-voice.mp3">
-                    {t("Download MP3", "MP3 பதிவிறக்கு")}
+                    <Ic.Download /> {t("Download MP3", "MP3 பதிவிறக்கு")}
                   </a>
                 </div>
               )}
@@ -2121,7 +2134,7 @@ function AgentOverlay({ onClose }: { onClose: () => void }) {
         {label}
       </div>
       <button className="agent-close" onClick={onClose} aria-label={tr("Close agent")}>
-        ✕
+        <Ic.X size={20} />
       </button>
       <div className="agent-chat" ref={chatRef} aria-live="polite">
         {msgs.map((m, i) => (
@@ -2136,7 +2149,7 @@ function AgentOverlay({ onClose }: { onClose: () => void }) {
           onClick={mic}
           aria-label={state === "listening" ? "Stop listening" : "Speak"}
         >
-          {state === "listening" ? "■" : "🎙"}
+          {state === "listening" ? <Ic.Stop size={18} /> : <Ic.Mic size={20} />}
         </button>
         <input
           value={input}
@@ -2229,7 +2242,7 @@ function Palette({ onClose }: { onClose: () => void }) {
     <div className="pal-back" onClick={onClose}>
       <div className="pal" role="dialog" aria-label={tr("Search")} onClick={(e) => e.stopPropagation()}>
         <div className="pal-head">
-          <span aria-hidden="true">⌕</span>
+          <Ic.Search size={18} />
           <input
             ref={input}
             value={q}
