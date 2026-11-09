@@ -623,3 +623,24 @@ kbd { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; pa
 .auth-fine { font-size: 0.78rem; }
 .auth-fine a { color: inherit; }
 .foot-login { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+
+/* SEO landing pages (seo/pages.mjs): page text around one tool */
+.seo-top, .seo-body { max-width: 860px; margin: 0 auto; padding: 0 20px; color: var(--text); }
+.seo-top { padding-top: 104px; }
+.seo-top h1 { font-size: clamp(30px, 4.4vw, 50px); line-height: 1.08; letter-spacing: -0.03em; font-weight: 600; margin: 10px 0 18px; }
+.seo-top p, .seo-body p, .seo-body li { font-size: 1.05rem; line-height: 1.65; color: var(--muted); }
+.seo-top p { color: var(--text); opacity: 0.85; }
+.seo-crumbs { font-size: 0.85rem; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.seo-crumbs a, .seo-links a, .seo-body a { color: var(--text); }
+.seo-body { padding-bottom: 72px; }
+.seo-sec { padding-top: 40px; }
+.seo-sec h2 { font-size: clamp(24px, 3vw, 34px); line-height: 1.15; letter-spacing: -0.02em; font-weight: 600; margin: 0 0 14px; }
+.seo-sec h3 { font-size: 1.08rem; margin: 18px 0 4px; }
+.seo-steps { padding-left: 1.3em; display: grid; gap: 6px; }
+.seo-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.seo-card { border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; background: var(--card); }
+.seo-card h3 { margin-top: 0; }
+.seo-card p { margin: 0; font-size: 0.97rem; }
+.seo-links { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.seo-slot > .seo-top { padding-top: 96px; }
+@media (max-width: 640px) { .seo-top { padding-top: 88px; } }
