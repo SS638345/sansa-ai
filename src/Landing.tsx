@@ -21,6 +21,7 @@ import { CLONE_MAX_CHARS, LONG_TEXT_MAX_CHARS, SPEAK_MAX_CHARS } from "./limits"
 import { setUi, t, tr, useUi } from "./i18n";
 import { tamilToTanglish } from "./translit";
 import { Ic, bare } from "./icons";
+import { AuthButton, askLogin } from "./auth";
 
 type Theme = "light" | "dark";
 type Lang = "en" | "ta";
@@ -95,8 +96,6 @@ const SAMPLE: Record<Lang, string> = {
   ta: "வணக்கம்! SANSA-வுக்கு உங்களை வரவேற்கிறோம்.",
 };
 
-const LOGIN = "https://app.sansaai.in/login";
-const SIGNUP = "https://app.sansaai.in/register";
 const CONTACT = "./contact";
 
 /* ------------------------------------------------------------------ orb state shared with the 3D scene */
@@ -498,12 +497,7 @@ export function SiteHeader() {
           <span className="search-word">{tr("Search")}</span>
           <kbd>{mac ? "⌘K" : "Ctrl K"}</kbd>
         </button>
-        <a className="nav-login" href={LOGIN}>
-          {tr("Log in")}
-        </a>
-        <a className="btn-dark" href={SIGNUP}>
-          {tr("Sign up")}
-        </a>
+        <AuthButton />
         <button
           className="lang-btn"
           onClick={() => setUi(ui === "ta" ? "en" : "ta")}
@@ -547,12 +541,7 @@ export function SiteHeader() {
             {tr("FAQ")}
           </a>
           <div className="mobile-menu-actions">
-            <a className="btn-outline" href={LOGIN}>
-              {tr("Log in")}
-            </a>
-            <a className="btn-dark" href={SIGNUP}>
-              {tr("Sign up")}
-            </a>
+            <AuthButton wide />
           </div>
         </div>
       )}
@@ -837,7 +826,7 @@ export function Hero() {
       <div className="hero2-copy fade-ui">
         <span className="eyebrow">{tr("AI Voice Platform")}</span>
         <h1>{tr("Lifelike AI voices in English and Tamil.")}</h1>
-        <p className="hero2-sub">{tr("Text to speech, speech to text and noise cleanup in Tamil and English. Free, no sign up needed.")}</p>
+        <p className="hero2-sub">{tr("Text to speech, speech to text and noise cleanup in Tamil and English. Free, sign in with Google.")}</p>
       </div>
       <Orb />
       <div className="hero2-bar-wrap fade-ui">
@@ -2203,7 +2192,7 @@ export function SiteFooter() {
           <Col title={tr("Support")}>
             <a href={CONTACT}>{tr("Help Centre")}</a>
             <a href="#faq">{tr("FAQ")}</a>
-            <a href={LOGIN}>{tr("Log in")}</a>
+            <button className="link auth-btn foot-login" onClick={() => askLogin()}>{t("Sign in", "உள்நுழை")}</button>
           </Col>
           <Col title={tr("Company")}>
             <a href="./about">{tr("About")}</a>
@@ -2467,8 +2456,7 @@ function Palette({ onClose }: { onClose: () => void }) {
     ["Voice agents", "Section", () => h.goTo("agents")],
     ["Developer API", "Section", () => h.goTo("api")],
     ["FAQ", "Section", () => h.goTo("faq")],
-    ["Log in", "Page", page(LOGIN)],
-    ["Create a free account", "Page", page(SIGNUP)],
+    ["Sign in with Google", "Page", () => askLogin()],
     ["About", "Page", page("./about")],
     ["Contact", "Page", page(CONTACT)],
     ["Privacy", "Page", page("./privacy")],
