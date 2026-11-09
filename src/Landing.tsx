@@ -904,7 +904,7 @@ const PRODUCTS: { name: string; desc: string; href?: string; soon?: boolean; ico
   { name: "Dubbing", desc: "Translate video and keep every voice.", soon: true, icon: "Languages", tint: "#a55cf0" },
   { name: "Voice Changer", desc: "Turn one recording into any voice.", soon: true, icon: "Wand", tint: "#e5484d" },
   { name: "Sound Effects", desc: "Generate sound from a text prompt.", soon: true, icon: "Drum", tint: "#d9822b" },
-  { name: "Voice Agents", desc: "Assistants for calls and support.", href: "#agents", icon: "Bot", tint: "#4c6fff" },
+  { name: "Voice Agents", desc: "Ask SANSA about our tools, by voice. Phone agents soon.", href: "#agents", icon: "Bot", tint: "#4c6fff" },
   { name: "Audio Cleanup", desc: "Remove noise and isolate clear speech.", href: "#cleanup", icon: "Sparkles", tint: "#2fbf8f" },
 ];
 
@@ -1346,7 +1346,7 @@ export function Cleanup() {
           </p>
 
           <button className="btn-rec" onClick={() => void run()} disabled={!file || busy}>
-            {busy ? (stage === "reading" ? tr("Reading file…") : t(`Cleaning… ${Math.round(progress * 100)}%`, `சுத்தம் செய்கிறது… ${Math.round(progress * 100)}%`)) : tr("✨ Clean audio")}
+            {busy ? (stage === "reading" ? tr("Reading file…") : t(`Cleaning… ${Math.round(progress * 100)}%`, `சுத்தம் செய்கிறது… ${Math.round(progress * 100)}%`)) : <><Ic.Sparkles /> {bare(tr("✨ Clean audio")).replace(/^✨\s*/u, "")}</>}
           </button>
           {busy && (
             <div className="clean-prog" aria-hidden="true">

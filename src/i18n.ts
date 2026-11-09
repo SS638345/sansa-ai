@@ -94,6 +94,7 @@ const TA: Record<string, string> = {
   "Sound Effects": "ஒலி விளைவுகள்",
   "Generate sound from a text prompt.": "எழுத்திலிருந்து ஒலி உருவாக்கும்.",
   "Assistants for calls and support.": "அழைப்புகளுக்கும் உதவிக்கும் உதவியாளர்கள்.",
+  "Ask SANSA about our tools, by voice. Phone agents soon.": "எங்கள் கருவிகள் பற்றி குரலில் SANSA-விடம் கேளுங்கள். Phone agents விரைவில்.",
   "Remove noise and isolate clear speech.": "சத்தம் நீக்கி தெளிவான பேச்சை தரும்.",
   "Voice Library": "குரல் நூலகம்",
   "Audio Cleanup": "சத்தம் நீக்கல்",
