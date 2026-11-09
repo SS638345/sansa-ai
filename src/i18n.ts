@@ -91,6 +91,7 @@ const TA: Record<string, string> = {
   "Translate video and keep every voice.": "வீடியோவை மொழிபெயர்த்து அதே குரலில்.",
   "Voice Changer": "குரல் மாற்றி",
   "Turn one recording into any voice.": "ஒரு பதிவை வேறு குரலாக மாற்றும்.",
+  "Same words in a SANSA voice or your own voice.": "அதே வார்த்தைகள், SANSA குரலில் அல்லது உங்கள் சொந்த குரலில்.",
   "Sound Effects": "ஒலி விளைவுகள்",
   "Generate sound from a text prompt.": "எழுத்திலிருந்து ஒலி உருவாக்கும்.",
   "Assistants for calls and support.": "அழைப்புகளுக்கும் உதவிக்கும் உதவியாளர்கள்.",

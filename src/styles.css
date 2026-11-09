@@ -593,3 +593,13 @@ kbd { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; pa
 .row button, .library-toggle { display: inline-flex; align-items: center; gap: 7px; }
 .library-toggle .ico { margin-left: auto; }
 .site-links { gap: 20px; }
+
+/* voice changer */
+.changer-file { cursor: pointer; justify-content: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.changer-voices { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.changer-voices .chip { font: inherit; font-size: 0.85rem; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line, rgb(128 128 128 / 0.35)); background: transparent; color: var(--text); cursor: pointer; }
+.changer-voices .chip.on { background: var(--accent-soft); border-color: rgb(242 185 80 / 0.6); font-weight: 600; }
+.changer-voices .chip:disabled { opacity: 0.45; cursor: not-allowed; }
+.changer-out { display: grid; gap: 8px; margin-top: 12px; }
+.changer-out audio { width: 100%; height: 40px; }
+.changer-out a.btn-outline { text-decoration: none; justify-self: start; }

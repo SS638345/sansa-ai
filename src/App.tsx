@@ -11,7 +11,7 @@ import { denoiseToWav } from "./denoise";
 import { deleteItem, listItems, renameItem, saveItem, titleFrom, type LibraryItem } from "./libraryStore";
 import { readAloudSupported, speak, voiceFor, voicesReady } from "./readAloud";
 import { Library } from "./Library";
-import { Agents, Api, Cleanup, Clone, Cta, Faq, Hero, HomeProvider, HowItWorks, Products, SiteFooter, SiteHeader, Voices, useTheme } from "./Landing";
+import { Agents, Api, Cleanup, Clone, Cta, Faq, Hero, HomeProvider, HowItWorks, Products, SiteFooter, VoiceChanger, SiteHeader, Voices, useTheme } from "./Landing";
 import { t, tr, useUi } from "./i18n";
 import { tanglishToTamil } from "./translit";
 import { ENGINE_UPLOAD_MB, LOCAL_UPLOAD_MB, VIDEO_UPLOAD_MB } from "./limits";
@@ -785,6 +785,7 @@ export default function App() {
       <Cleanup />
       <Voices />
       <Clone />
+      <VoiceChanger />
       <Agents />
       <Api />
       <Faq items={FAQ} />
