@@ -12,12 +12,15 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import { readAloudSupported, voiceFor, voicesReady } from "./readAloud";
 import { think, type Reply } from "./agentBrain";
-import { LONG_TEXT_MAX_CHARS, SPEAK_MAX_CHARS } from "./limits";
+import { CLONE_MAX_CHARS, LONG_TEXT_MAX_CHARS, SPEAK_MAX_CHARS } from "./limits";
 import { setUi, t, tr, useUi } from "./i18n";
+import { tamilToTanglish } from "./translit";
+import { Ic, bare } from "./icons";
 
 type Theme = "light" | "dark";
 type Lang = "en" | "ta";
@@ -77,6 +80,15 @@ const VOICES: Voice[] = (
 const voiceFor2 = (lang: Lang, gender: Gender) => VOICES.find((v) => v.lang === lang && v.gender === gender) ?? VOICES[0];
 
 const TTS_URL = "/tts/speak";
+const WARM_URL = "/tts/warm";
+const warmedAt: Partial<Record<Lang, number>> = {};
+/** Ask the voice engine to load this language now, so it is ready when the visitor presses play (at most once a minute). */
+function warmVoice(lang: Lang) {
+  const now = Date.now();
+  if (now - (warmedAt[lang] ?? 0) < 60_000) return;
+  warmedAt[lang] = now;
+  void fetch(WARM_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lang }), keepalive: true }).catch(() => undefined);
+}
 
 const SAMPLE: Record<Lang, string> = {
   en: "Welcome to SANSA. Type anything here and hear it come alive.",
@@ -228,6 +240,8 @@ export function HomeProvider({
 }) {
   const [lang, setLang] = useState<Lang>("en");
   const [voice, setVoice] = useState("meera");
+  useEffect(() => warmVoice(lang), [lang]);
+  useEffect(() => warmVoice((VOICES.find((v) => v.id === voice) ?? VOICES[0]).lang), [voice]);
   const [playing, setPlaying] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [lastAudio, setLastAudio] = useState<{ id: string; url: string; name: string } | null>(null);
@@ -451,12 +465,7 @@ function OrbMark({ size = 28 }: { size?: number }) {
   return <img className="brand-mark" src="/brand/sansa-mark.svg" width={size} height={size} alt="" aria-hidden="true" />;
 }
 
-const SearchIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
-    <circle cx="11" cy="11" r="7" />
-    <path d="m20 20-3.5-3.5" />
-  </svg>
-);
+const SearchIcon = () => <Ic.Search size={16} />;
 
 export function SiteHeader() {
   const h = useHome();
@@ -504,7 +513,7 @@ export function SiteHeader() {
           {ui === "ta" ? "EN" : "தமிழ்"}
         </button>
         <button className="theme-btn" onClick={h.toggleTheme} title={tr("Switch light / dark")} aria-label={tr("Switch light / dark")}>
-          {h.theme === "dark" ? "☀" : "☾"}
+          {h.theme === "dark" ? <Ic.Sun /> : <Ic.Moon />}
         </button>
         <button
           className="menu-btn"
@@ -807,7 +816,20 @@ export function Hero() {
     setNote(null);
   };
   const onSpeak = async () => setNote(await h.play("hero", text, cur));
-  const label = h.loadingId === "hero" ? tr("… Creating") : h.playing === "hero" ? tr("■ Stop") : tr("▶ Speak");
+  const label =
+    h.loadingId === "hero" ? (
+      <>
+        <Ic.Loader className="ico spin" /> {bare(tr("… Creating"))}
+      </>
+    ) : h.playing === "hero" ? (
+      <>
+        <Ic.Stop /> {bare(tr("■ Stop"))}
+      </>
+    ) : (
+      <>
+        <Ic.Play /> {bare(tr("▶ Speak"))}
+      </>
+    );
 
   return (
     <section className="hero2">
@@ -862,7 +884,7 @@ export function Hero() {
             {h.loadingId === "hero" ? tr("Creating your audio… the first one can take up to 20 seconds.") : note}
             {h.lastAudio?.id === "hero" && h.loadingId !== "hero" && (
               <a className="dl-link" href={h.lastAudio.url} download={h.lastAudio.name}>
-                {tr("⬇ Download mp3")}
+                <Ic.Download /> {bare(tr("⬇ Download mp3"))}
               </a>
             )}
           </p>
@@ -874,15 +896,15 @@ export function Hero() {
 
 /* ------------------------------------------------------------------ products */
 
-const PRODUCTS: { name: string; desc: string; href?: string; soon?: boolean }[] = [
-  { name: "Text to Speech", desc: "Natural voiceovers from any script.", href: "#voices" },
-  { name: "Speech to Text", desc: "Accurate transcripts and subtitles.", href: "#app" },
-  { name: "Voice Cloning", desc: "Your own voice from a short sample.", href: "#clone", soon: true },
-  { name: "Dubbing", desc: "Translate video and keep every voice.", soon: true },
-  { name: "Voice Changer", desc: "Turn one recording into any voice.", soon: true },
-  { name: "Sound Effects", desc: "Generate sound from a text prompt.", soon: true },
-  { name: "Voice Agents", desc: "Assistants for calls and support.", href: "#agents" },
-  { name: "Audio Cleanup", desc: "Remove noise and isolate clear speech.", href: "#cleanup" },
+const PRODUCTS: { name: string; desc: string; href?: string; soon?: boolean; icon: keyof typeof Ic; tint: string }[] = [
+  { name: "Text to Speech", desc: "Natural voiceovers from any script.", href: "#voices", icon: "AudioLines", tint: "#f2b950" },
+  { name: "Speech to Text", desc: "Accurate transcripts and subtitles.", href: "#app", icon: "Captions", tint: "#4c6fff" },
+  { name: "Voice Cloning", desc: "Your own voice from a 20-second reading.", href: "#clone", icon: "Fingerprint", tint: "#2fbf8f" },
+  { name: "Dubbing", desc: "Translate video and keep every voice.", soon: true, icon: "Languages", tint: "#a55cf0" },
+  { name: "Voice Changer", desc: "Turn one recording into any voice.", soon: true, icon: "Wand", tint: "#e5484d" },
+  { name: "Sound Effects", desc: "Generate sound from a text prompt.", soon: true, icon: "Drum", tint: "#d9822b" },
+  { name: "Voice Agents", desc: "Assistants for calls and support.", href: "#agents", icon: "Bot", tint: "#4c6fff" },
+  { name: "Audio Cleanup", desc: "Remove noise and isolate clear speech.", href: "#cleanup", icon: "Sparkles", tint: "#2fbf8f" },
 ];
 
 export function Products() {
@@ -893,10 +915,13 @@ export function Products() {
         <h2>{tr("Everything you need to create with voice.")}</h2>
       </div>
       <div className="prod-grid">
-        {PRODUCTS.map((p, i) => {
+        {PRODUCTS.map((p) => {
+          const Icon = Ic[p.icon];
           const body = (
             <>
-              <span className="prod-orb" style={{ background: SW[i % SW.length] }} aria-hidden="true" />
+              <span className="prod-ico" style={{ "--tint": p.tint } as CSSProperties} aria-hidden="true">
+                <Icon size={22} />
+              </span>
               <span className="prod-name">
                 {tr(p.name)} {p.soon ? <em className="soon">{tr("Coming soon")}</em> : <em className="live">{tr("Live")}</em>}
               </span>
@@ -972,7 +997,7 @@ export function Voices() {
       </div>
       <div className="filters" role="radiogroup" aria-label={tr("Voice language")}>
         {FILTERS.map((f) => (
-          <button key={f} role="radio" aria-checked={filter === f} className={filter === f ? "on" : ""} onClick={() => setFilter(f)}>
+          <button key={f} role="radio" aria-checked={filter === f} className={filter === f ? "on" : ""} onClick={() => { setFilter(f); if (f === "Tamil") warmVoice("ta"); }}>
             {tr(f)}
           </button>
         ))}
@@ -991,9 +1016,11 @@ export function Voices() {
               <button
                 className="play-btn"
                 aria-label={on || busy ? t(`Stop ${v.name}`, `${tr(v.name)} நிறுத்து`) : t(`Play ${v.name}`, `${tr(v.name)} கேட்க`)}
+                onPointerEnter={() => warmVoice(v.lang)}
+                onFocus={() => warmVoice(v.lang)}
                 onClick={() => void h.play(v.id, voiceSample(v), v).then(setNote)}
               >
-                {busy ? "…" : on ? "■" : "▶"}
+                {busy ? <Ic.Loader className="ico spin" /> : on ? <Ic.Stop /> : <Ic.Play />}
               </button>
             </div>
           );
@@ -1138,7 +1165,12 @@ function LongTts() {
         disabled={busy}
       />
       <div className="long-row">
-        <select value={voice} onChange={(e) => setVoice(e.target.value)} disabled={busy} aria-label={tr("Voice")}>
+        <select
+          value={voice}
+          onChange={(e) => { setVoice(e.target.value); warmVoice((VOICES.find((x) => x.id === e.target.value) ?? VOICES[0]).lang); }}
+          disabled={busy}
+          aria-label={tr("Voice")}
+        >
           {VOICES.map((x) => (
             <option key={x.id} value={x.id}>
               {tr(x.name)} · {tr(x.desc)}
@@ -1146,7 +1178,7 @@ function LongTts() {
           ))}
         </select>
         <button className="btn-rec" onClick={() => void run()} disabled={!busy && !text.trim()}>
-          {busy ? tr("■ Stop") : tr("Create MP3")}
+          {busy ? <><Ic.Stop /> {bare(tr("■ Stop"))}</> : <><Ic.AudioLines /> {tr("Create MP3")}</>}
         </button>
       </div>
       {busy && (
@@ -1171,7 +1203,7 @@ function LongTts() {
           </p>
           <audio controls preload="metadata" src={result.url} />
           <a className="btn-dark dl-btn" href={result.url} download={result.name}>
-            {tr("⬇ Download MP3")}
+            <Ic.Download /> {bare(tr("⬇ Download MP3"))}
           </a>
         </div>
       )}
@@ -1343,7 +1375,7 @@ export function Cleanup() {
                 <audio controls preload="metadata" src={result.after} />
               </label>
               <a className="btn-dark dl-btn" href={result.after} download={tr(result.name)}>
-                {tr("⬇ Download clean audio (WAV)")}
+                <Ic.Download /> {bare(tr("⬇ Download clean audio (WAV)"))}
               </a>
               {file && /^video\//.test(file.type) && <small className="clean-note">{tr("For videos you get the cleaned sound as a WAV file.")}</small>}
             </div>
@@ -1354,161 +1386,363 @@ export function Cleanup() {
   );
 }
 
-/* ------------------------------------------------------------------ voice cloning sample recorder */
+/* ------------------------------------------------------------------ voice cloning (own voice only) */
+/*
+ * 1. The visitor ticks "this is my own voice" and gets a random Tamil passage (signed by the engine).
+ * 2. They read it aloud (8-30 s). The engine checks the words with our own speech-to-text, so a recording
+ *    of someone else will not pass, and returns a signed voice print (256 numbers). Nothing is kept on the server.
+ * 3. The print is kept only in this browser. Typing text then gives an MP3 in their voice (Tamil or English).
+ */
 
-type CloneState = "idle" | "recording" | "processing" | "ready" | "error";
+const CLONE_KEY = "vtt.cloneVoice";
+const CLONE_MAX = CLONE_MAX_CHARS;
+const REC_MIN_S = 8;
+const REC_MAX_S = 30;
+type SavedVoice = { print: string; sig: string; created: number };
+type ClonePhase = "start" | "recording" | "checking" | "ready";
+
+function loadVoice(): SavedVoice | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(CLONE_KEY) || "null");
+    return v && typeof v.print === "string" && typeof v.sig === "string" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/** 48 kHz mono -> 16 kHz 16-bit WAV (exact factor 3: average each group of three samples). */
+function wav16k(x48: Float32Array): Blob {
+  const n = Math.floor(x48.length / 3);
+  const buf = new ArrayBuffer(44 + n * 2);
+  const v = new DataView(buf);
+  const s = (o: number, t: string) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  s(0, "RIFF");
+  v.setUint32(4, 36 + n * 2, true);
+  s(8, "WAVEfmt ");
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true);
+  v.setUint32(24, 16000, true);
+  v.setUint32(28, 32000, true);
+  v.setUint16(32, 2, true);
+  v.setUint16(34, 16, true);
+  s(36, "data");
+  v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) {
+    const a = (x48[3 * i] + x48[3 * i + 1] + x48[3 * i + 2]) / 3;
+    v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, a)) * 0x7fff, true);
+  }
+  return new Blob([buf], { type: "audio/wav" });
+}
+
+async function apiError(r: Response): Promise<string> {
+  if (r.status === 429) return t("Too many tries. Please wait a minute and try again.", "நிறைய முறை முயற்சி செய்தீர்கள். ஒரு நிமிடம் கழித்து மீண்டும் முயலுங்கள்.");
+  try {
+    const d = await r.json();
+    if (typeof d.detail === "string") return tr(d.detail);
+  } catch {
+    /* not JSON */
+  }
+  return t("The voice engine is busy. Please try again in a minute.", "குரல் இயந்திரம் இப்போது பிஸியாக உள்ளது. ஒரு நிமிடம் கழித்து முயலுங்கள்.");
+}
 
 export function Clone() {
-  const [st, setSt] = useState<CloneState>("idle");
+  const [voice, setVoice] = useState<SavedVoice | null>(() => loadVoice());
+  const [phase, setPhase] = useState<ClonePhase>(() => (loadVoice() ? "ready" : "start"));
+  const [consent, setConsent] = useState(false);
+  const [passage, setPassage] = useState<{ text: string; token: string } | null>(null);
+  const [err, setErr] = useState<string | null>(null);
   const [levels, setLevels] = useState<number[]>([]);
   const [secs, setSecs] = useState(0);
-  const url = useRef<string | null>(null);
-  const audio = useRef<HTMLAudioElement | null>(null);
-  const rec = useRef<{ mr: MediaRecorder; stream: MediaStream; ac: AudioContext; iv: number } | null>(null);
-  const [playingBack, setPlayingBack] = useState(false);
-  const [prog, setProg] = useState(0);
-  const procIv = useRef(0);
+  const rec = useRef<{ mr: MediaRecorder; stream: MediaStream; ac: AudioContext; iv: number; parts: Blob[]; t0: number } | null>(null);
+  const [text, setText] = useState("");
+  const [making, setMaking] = useState(false);
+  const [out, setOut] = useState<{ url: string; text: string } | null>(null);
+  const abort = useRef<AbortController | null>(null);
 
-  const stop = useCallback(() => {
+  const stopStream = useCallback(() => {
     const r = rec.current;
     if (!r) return;
-    rec.current = null;
     clearInterval(r.iv);
-    try {
-      if (r.mr.state !== "inactive") r.mr.stop();
-    } catch {
-      /* already stopped */
-    }
-    r.stream.getTracks().forEach((t) => t.stop());
-    void r.ac.close().catch(() => {});
+    r.stream.getTracks().forEach((tk) => tk.stop());
+    void r.ac.close().catch(() => undefined);
   }, []);
 
   useEffect(
     () => () => {
-      stop();
-      clearInterval(procIv.current);
-      audio.current?.pause();
-      if (url.current) URL.revokeObjectURL(url.current);
+      stopStream();
+      abort.current?.abort();
     },
-    [stop],
+    [stopStream],
   );
+  useEffect(() => () => { if (out) URL.revokeObjectURL(out.url); }, [out]);
 
-  const start = async () => {
-    if (st === "recording") return stop();
-    if (st === "processing") return;
-    audio.current?.pause();
-    setPlayingBack(false);
+  const getPassage = async () => {
+    setErr(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const r = await fetch("/tts/clone/challenge", { method: "POST" });
+      if (!r.ok) throw new Error(await apiError(r));
+      setPassage(await r.json());
+    } catch (e) {
+      setErr(e instanceof Error && e.message ? e.message : t("Could not reach the voice engine. Check your internet and try again.", "குரல் இயந்திரத்தை அணுக முடியவில்லை. இணையத்தை சரிபார்த்து மீண்டும் முயலுங்கள்."));
+    }
+  };
+
+  const enroll = async (blob: Blob, seconds: number) => {
+    if (!passage) return;
+    if (seconds < REC_MIN_S) {
+      setPhase("start");
+      setErr(t(`Please read the whole passage. We need at least ${REC_MIN_S} seconds.`, `முழு பத்தியையும் படியுங்கள். குறைந்தது ${REC_MIN_S} வினாடிகள் தேவை.`));
+      return;
+    }
+    setPhase("checking");
+    try {
+      const { decodeMono48k } = await import("./cleanup");
+      const wav = wav16k(await decodeMono48k(blob));
+      const r = await fetch(`/tts/clone/enroll?consent=1&token=${encodeURIComponent(passage.token)}`, { method: "POST", headers: { "Content-Type": "audio/wav" }, body: wav });
+      if (!r.ok) {
+        const raw = String((await r.clone().json().catch(() => ({}))).detail ?? "");
+        if (/expired|not valid/i.test(raw)) setPassage(null);
+        throw new Error(await apiError(r));
+      }
+      const d = await r.json();
+      const v: SavedVoice = { print: d.print, sig: d.sig, created: Date.now() };
+      try {
+        localStorage.setItem(CLONE_KEY, JSON.stringify(v));
+      } catch {
+        /* private mode: keep it for this visit only */
+      }
+      setVoice(v);
+      setPassage(null);
+      setPhase("ready");
+    } catch (e) {
+      setPhase("start");
+      setErr(e instanceof Error && e.message ? e.message : t("Something went wrong. Please record again.", "ஏதோ தவறு நடந்தது. மீண்டும் பதிவு செய்யுங்கள்."));
+    }
+  };
+
+  const toggleRecord = async () => {
+    if (phase === "recording") {
+      rec.current?.mr.stop();
+      return;
+    }
+    setErr(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       const ac = new AudioContext();
       const an = ac.createAnalyser();
       an.fftSize = 128;
       ac.createMediaStreamSource(stream).connect(an);
       const parts: Blob[] = [];
       const mr = new MediaRecorder(stream);
+      const t0 = performance.now();
       mr.ondataavailable = (e) => e.data.size && parts.push(e.data);
       mr.onstop = () => {
-        if (url.current) URL.revokeObjectURL(url.current);
-        url.current = URL.createObjectURL(new Blob(parts, { type: mr.mimeType || "audio/webm" }));
+        const seconds = (performance.now() - t0) / 1000;
+        stopStream();
+        rec.current = null;
         setLevels([]);
-        setSt("processing");
-        setProg(0);
-        const t1 = performance.now();
-        const piv = window.setInterval(() => {
-          const p = Math.min(100, ((performance.now() - t1) / 2000) * 100);
-          setProg(p);
-          if (p >= 100) {
-            clearInterval(piv);
-            setSt("ready");
-          }
-        }, 60);
-        procIv.current = piv;
+        void enroll(new Blob(parts, { type: mr.mimeType || "audio/webm" }), seconds);
       };
-      const t0 = performance.now();
       const iv = window.setInterval(() => {
         const d = new Uint8Array(an.frequencyBinCount);
         an.getByteFrequencyData(d);
         setLevels(Array.from({ length: 40 }, (_, i) => d[Math.floor((i * d.length * 0.6) / 40)] / 255));
-        const t = (performance.now() - t0) / 1000;
-        setSecs(t);
-        if (t >= 10) stop();
+        const s = (performance.now() - t0) / 1000;
+        setSecs(s);
+        if (s >= REC_MAX_S && mr.state === "recording") mr.stop();
       }, 70);
-      rec.current = { mr, stream, ac, iv };
+      rec.current = { mr, stream, ac, iv, parts, t0 };
       mr.start();
       setSecs(0);
-      setSt("recording");
+      setPhase("recording");
     } catch {
-      setSt("error");
+      setErr(t("Microphone access was blocked. Allow it and try again.", "மைக் அனுமதி தடுக்கப்பட்டது. அனுமதித்து மீண்டும் முயலுங்கள்."));
     }
   };
 
-  const playBack = () => {
-    if (!url.current) return;
-    if (playingBack) {
-      audio.current?.pause();
-      setPlayingBack(false);
+  const speak = async () => {
+    if (!voice || !text.trim()) return;
+    if (making) {
+      abort.current?.abort();
       return;
     }
-    audio.current?.pause();
-    const a = new Audio(url.current);
-    audio.current = a;
-    a.onended = () => setPlayingBack(false);
-    void a.play().then(() => setPlayingBack(true)).catch(() => setPlayingBack(false));
+    const ctrl = new AbortController();
+    abort.current = ctrl;
+    setMaking(true);
+    setErr(null);
+    try {
+      let r: Response | null = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        r = await fetch("/tts/clone/speak", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: text.trim(), lang: "auto", print: voice.print, sig: voice.sig }),
+          signal: ctrl.signal,
+        });
+        if (r.status !== 429 && r.status < 500) break;
+        await new Promise((ok) => setTimeout(ok, 4000 * (attempt + 1)));
+      }
+      if (r && !r.ok && /record your voice again/i.test(String((await r.clone().json().catch(() => ({}))).detail ?? ""))) forget();
+      if (!r || !r.ok) throw new Error(r ? await apiError(r) : "");
+      const url = URL.createObjectURL(await r.blob());
+      setOut({ url, text: text.trim() });
+      void new Audio(url).play().catch(() => undefined);
+    } catch (e) {
+      if (!ctrl.signal.aborted) setErr(e instanceof Error && e.message ? e.message : t("Could not make the audio. Please try again.", "ஆடியோ உருவாக்க முடியவில்லை. மீண்டும் முயலுங்கள்."));
+    } finally {
+      setMaking(false);
+    }
   };
 
-  const bars = Array.from({ length: 40 }, (_, i) => {
-    if (st === "recording") return { h: Math.round(4 + (levels[i] ?? 0) * 68), on: true };
-    if (st === "ready") return { h: Math.round(8 + 50 * Math.abs(Math.sin(i * 0.6) * Math.cos(i * 0.21))), on: true };
-    return { h: 4, on: false };
-  });
-  const status = {
-    idle: tr("Ready when you are"),
-    recording: tr("Recording… speak now"),
-    processing: tr("Building your voice…"),
-    ready: tr("Your voice preview is ready"),
-    error: tr("Microphone access was blocked. Allow it and try again."),
-  }[st];
-  const btn = { idle: tr("● Start recording"), recording: tr("■ Stop recording"), processing: tr("Processing…"), ready: tr("↺ Record again"), error: tr("● Try again") }[st];
+  const forget = () => {
+    try {
+      localStorage.removeItem(CLONE_KEY);
+    } catch {
+      /* ignore */
+    }
+    setVoice(null);
+    setOut(null);
+    setPhase("start");
+  };
+
+  const bars = Array.from({ length: 40 }, (_, i) =>
+    phase === "recording" ? { h: Math.round(4 + (levels[i] ?? 0) * 68), on: true } : { h: 4, on: false },
+  );
+  const tanglish = passage ? tamilToTanglish(passage.text) : "";
+  const panelState = phase === "recording" ? "recording" : phase === "ready" ? "ready" : "idle";
 
   return (
     <section id="clone" className="band">
       <div className="sec split">
         <div className="split-copy">
           <span className="eyebrow at">{tr("Voice cloning")}</span>
-          <h2>{tr("Your own voice, coming soon.")}</h2>
-          <p>{tr("Read the line out loud to record a short sample and hear it back. Speaking in your own voice is coming soon.")}</p>
-        </div>
-        <div className={`panel clone-${st}`}>
-          <div className="clone-line">
-            <span className="eyebrow small">{tr("Read aloud")}</span>
-            <span>{tr("“Hi, this is my voice. I’m creating my own AI voice with SANSA.”")}</span>
-          </div>
-          <div className="clone-bars" aria-hidden="true">
-            {bars.map((b, i) => (
-              <span key={i} style={{ height: b.h }} className={b.on ? "on" : ""} />
-            ))}
-          </div>
-          <div className="clone-prog" aria-hidden="true">
-            <div style={{ width: `${st === "recording" ? Math.min(100, secs * 10) : st === "processing" ? prog : st === "ready" ? 100 : 0}%` }} />
-          </div>
-          <div className="clone-status">
-            <span role="status">
-              <i className={`st-dot ${st}`} aria-hidden="true" />
-              {status}
-            </span>
-            <span className="mono">{st === "recording" ? `0:${String(Math.floor(secs)).padStart(2, "0")} / 0:10` : ""}</span>
-          </div>
-          <div className="clone-actions">
-            <button className={st === "recording" ? "btn-rec on" : "btn-rec"} onClick={() => void start()}>
-              {btn}
-            </button>
-            {st === "ready" && (
-              <button className="btn-outline" onClick={playBack}>
-                {playingBack ? tr("■ Stop") : tr("▶ Play your voice")}
-              </button>
+          <h2>{t("Speak in your own voice.", "உங்கள் சொந்த குரலில் பேசுங்கள்.")}</h2>
+          <p>
+            {t(
+              "Read a short Tamil passage aloud. We check the words, make a voice print and keep it only in this browser. Then type anything in Tamil or English and get an MP3 in your voice.",
+              "ஒரு சிறிய தமிழ் பத்தியை சத்தமாக படியுங்கள். வார்த்தைகளை சரிபார்த்து, உங்கள் குரல் அடையாளத்தை இந்த browser-ல் மட்டும் வைக்கிறோம். பிறகு தமிழிலோ ஆங்கிலத்திலோ எதை type செய்தாலும் உங்கள் குரலில் MP3 கிடைக்கும்.",
             )}
-          </div>
-          <span className="mono small">{tr("Preview only. Your recording stays in this browser.")}</span>
+          </p>
+          <p className="clone-rules">
+            {t(
+              "Your own voice only. The reading check stops copying a voice from someone else's recording. Your recording is not saved on our server.",
+              "உங்கள் சொந்த குரல் மட்டும். வேறொருவரின் பதிவிலிருந்து குரலை நகலெடுக்க படிக்கும் சோதனை அனுமதிக்காது. உங்கள் பதிவு எங்கள் server-ல் சேமிக்கப்படாது.",
+            )}
+          </p>
+        </div>
+
+        <div className={`panel clone-${panelState}`}>
+          {phase !== "ready" && (
+            <>
+              <label className="check clone-consent">
+                <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} disabled={phase !== "start"} />
+                <span>
+                  {t(
+                    "This is my own voice. I will not use it to copy or pretend to be anyone else.",
+                    "இது என் சொந்த குரல். வேறொருவரைப் போல் நடிக்க இதைப் பயன்படுத்த மாட்டேன்.",
+                  )}
+                </span>
+              </label>
+
+              {!passage ? (
+                <div className="clone-actions">
+                  <button className="btn-rec" onClick={() => void getPassage()} disabled={!consent}>
+                    {t("Get my reading passage", "படிக்க வேண்டிய பத்தியை காட்டு")}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="clone-line">
+                    <span className="eyebrow small">{t("Read this aloud, clearly", "இதை தெளிவாக சத்தமாக படியுங்கள்")}</span>
+                    <span lang="ta">{passage.text}</span>
+                    <small className="clone-tanglish">{tanglish}</small>
+                  </div>
+                  <div className="clone-bars" aria-hidden="true">
+                    {bars.map((b, i) => (
+                      <span key={i} style={{ height: b.h }} className={b.on ? "on" : ""} />
+                    ))}
+                  </div>
+                  <div className="clone-prog" aria-hidden="true">
+                    <div style={{ width: `${phase === "recording" ? Math.min(100, (secs / REC_MAX_S) * 100) : phase === "checking" ? 100 : 0}%` }} />
+                  </div>
+                  <div className="clone-status">
+                    <span role="status">
+                      <i className={`st-dot ${phase === "recording" ? "recording" : phase === "checking" ? "processing" : "idle"}`} aria-hidden="true" />
+                      {phase === "recording"
+                        ? t("Recording… read the passage", "பதிவு ஆகிறது… பத்தியை படியுங்கள்")
+                        : phase === "checking"
+                          ? t("Checking your reading and building your voice… about 30 seconds", "உங்கள் வாசிப்பை சரிபார்த்து குரலை உருவாக்குகிறோம்… சுமார் 30 வினாடி")
+                          : t("Press record, read the passage, then press stop", "பதிவு அழுத்தி, பத்தியை படித்து, நிறுத்து அழுத்துங்கள்")}
+                    </span>
+                    <span className="mono">{phase === "recording" ? `0:${String(Math.floor(secs)).padStart(2, "0")} / 0:${REC_MAX_S}` : ""}</span>
+                  </div>
+                  <div className="clone-actions">
+                    <button className={phase === "recording" ? "btn-rec on" : "btn-rec"} onClick={() => void toggleRecord()} disabled={phase === "checking" || !consent}>
+                      {phase === "recording" ? <><Ic.Stop /> {t("Stop", "நிறுத்து")}</> : phase === "checking" ? <><Ic.Loader className="ico spin" /> {t("Checking…", "சரிபார்க்கிறது…")}</> : <><Ic.Record /> {t("Record", "பதிவு")}</>}
+                    </button>
+                    {phase === "start" && (
+                      <button className="btn-outline" onClick={() => void getPassage()}>
+                        {t("New passage", "வேறு பத்தி")}
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          {phase === "ready" && voice && (
+            <>
+              <div className="clone-status">
+                <span role="status">
+                  <i className="st-dot ready" aria-hidden="true" />
+                  {t("Your voice is ready", "உங்கள் குரல் தயார்")}
+                </span>
+                <button className="link" onClick={forget}>
+                  {t("Delete my voice", "என் குரலை நீக்கு")}
+                </button>
+              </div>
+              <textarea
+                className="clone-text"
+                value={text}
+                maxLength={CLONE_MAX}
+                onChange={(e) => setText(e.target.value)}
+                placeholder={t("Type in Tamil or English…", "தமிழிலோ ஆங்கிலத்திலோ type செய்யுங்கள்…")}
+                aria-label={t("Text to speak in your voice", "உங்கள் குரலில் பேச வேண்டிய text")}
+                rows={4}
+                disabled={making}
+              />
+              <div className="clone-status">
+                <span className="mono small">
+                  {text.length} / {CLONE_MAX}
+                </span>
+                {making && <span>{t("Making your audio… about 20-40 seconds", "உங்கள் ஆடியோ உருவாகிறது… சுமார் 20-40 வினாடி")}</span>}
+              </div>
+              <div className="clone-actions">
+                <button className="btn-rec" onClick={() => void speak()} disabled={!making && !text.trim()}>
+                  {making ? <><Ic.Loader className="ico spin" /> {t("Cancel", "ரத்து")}</> : <><Ic.Play /> {t("Speak in my voice", "என் குரலில் பேசு")}</>}
+                </button>
+              </div>
+              {out && (
+                <div className="clone-out">
+                  <audio controls src={out.url} />
+                  <a className="btn-outline" href={out.url} download="sansa-my-voice.mp3">
+                    <Ic.Download /> {t("Download MP3", "MP3 பதிவிறக்கு")}
+                  </a>
+                </div>
+              )}
+              <span className="mono small">
+                {t("AI voice. Use it for your own content only.", "AI குரல். உங்கள் சொந்த பயன்பாட்டிற்கு மட்டும்.")}
+              </span>
+            </>
+          )}
+
+          {err && (
+            <p className="clone-err" role="alert">
+              {err}
+            </p>
+          )}
         </div>
       </div>
     </section>
@@ -1900,7 +2134,7 @@ function AgentOverlay({ onClose }: { onClose: () => void }) {
         {label}
       </div>
       <button className="agent-close" onClick={onClose} aria-label={tr("Close agent")}>
-        ✕
+        <Ic.X size={20} />
       </button>
       <div className="agent-chat" ref={chatRef} aria-live="polite">
         {msgs.map((m, i) => (
@@ -1915,7 +2149,7 @@ function AgentOverlay({ onClose }: { onClose: () => void }) {
           onClick={mic}
           aria-label={state === "listening" ? "Stop listening" : "Speak"}
         >
-          {state === "listening" ? "■" : "🎙"}
+          {state === "listening" ? <Ic.Stop size={18} /> : <Ic.Mic size={20} />}
         </button>
         <input
           value={input}
@@ -2008,7 +2242,7 @@ function Palette({ onClose }: { onClose: () => void }) {
     <div className="pal-back" onClick={onClose}>
       <div className="pal" role="dialog" aria-label={tr("Search")} onClick={(e) => e.stopPropagation()}>
         <div className="pal-head">
-          <span aria-hidden="true">⌕</span>
+          <Ic.Search size={18} />
           <input
             ref={input}
             value={q}
