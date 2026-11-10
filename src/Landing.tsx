@@ -1422,15 +1422,18 @@ export function Cleanup() {
 /*
  * 1. The visitor ticks "this is my own voice" and gets a random Tamil passage (signed by the engine).
  * 2. They read it aloud (8-30 s). The engine checks the words with our own speech-to-text, so a recording
- *    of someone else will not pass, and returns a signed voice print (256 numbers). Nothing is kept on the server.
- * 3. The print is kept only in this browser. Typing text then gives an MP3 in their voice (Tamil or English).
+ *    of someone else will not pass, and returns a signed voice print plus the speech part of the reading
+ *    (16 kHz WAV; its SHA-256 is inside the signed print). Nothing is kept on the server.
+ * 3. Both are kept only in this browser. Typing text sends them with the text to /tts/clone/say, which rebuilds our
+ *    voice from pieces of the visitor's own reading (kNN-VC, closer than the print alone). Voices saved before
+ *    2026-11-10 have no reading and still use /tts/clone/speak (print only).
  */
 
 const CLONE_KEY = "vtt.cloneVoice";
 const CLONE_MAX = CLONE_MAX_CHARS;
 const REC_MIN_S = 8;
 const REC_MAX_S = 30;
-type SavedVoice = { print: string; sig: string; created: number };
+type SavedVoice = { print: string; sig: string; created: number; ref?: string };
 type ClonePhase = "start" | "recording" | "checking" | "ready";
 
 function loadVoice(): SavedVoice | null {
@@ -1538,11 +1541,16 @@ export function Clone() {
         throw new Error(await apiError(r));
       }
       const d = await r.json();
-      const v: SavedVoice = { print: d.print, sig: d.sig, created: Date.now() };
+      const v: SavedVoice = { print: d.print, sig: d.sig, created: Date.now(), ref: typeof d.ref === "string" ? d.ref : undefined };
       try {
         localStorage.setItem(CLONE_KEY, JSON.stringify(v));
       } catch {
-        /* private mode: keep it for this visit only */
+        // storage full or private mode: keep the reading for this visit, save the print alone for later visits
+        try {
+          localStorage.setItem(CLONE_KEY, JSON.stringify({ ...v, ref: undefined }));
+        } catch {
+          /* keep it for this visit only */
+        }
       }
       setVoice(v);
       setPassage(null);
@@ -1606,12 +1614,19 @@ export function Clone() {
     try {
       let r: Response | null = null;
       for (let attempt = 0; attempt < 3; attempt++) {
-        r = await fetch("/tts/clone/speak", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: text.trim(), lang: "auto", print: voice.print, sig: voice.sig }),
-          signal: ctrl.signal,
-        });
+        r = voice.ref
+          ? await fetch("/tts/clone/say", {
+              method: "POST",
+              headers: { "Content-Type": "audio/wav", "X-Print": voice.print, "X-Sig": voice.sig, "X-Lang": "auto", "X-Text": encodeURIComponent(text.trim()) },
+              body: Uint8Array.from(atob(voice.ref), (c) => c.charCodeAt(0)),
+              signal: ctrl.signal,
+            })
+          : await fetch("/tts/clone/speak", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text: text.trim(), lang: "auto", print: voice.print, sig: voice.sig }),
+              signal: ctrl.signal,
+            });
         if (r.status !== 429 && r.status < 500) break;
         await new Promise((ok) => setTimeout(ok, 4000 * (attempt + 1)));
       }
@@ -1652,8 +1667,8 @@ export function Clone() {
           <h2>{t("Speak in your own voice.", "உங்கள் சொந்த குரலில் பேசுங்கள்.")}</h2>
           <p>
             {t(
-              "Read a short Tamil passage aloud. We check the words, make a voice print and keep it only in this browser. Then type anything in Tamil or English and get an MP3 in your voice.",
-              "ஒரு சிறிய தமிழ் பத்தியை சத்தமாக படியுங்கள். வார்த்தைகளை சரிபார்த்து, உங்கள் குரல் அடையாளத்தை இந்த browser-ல் மட்டும் வைக்கிறோம். பிறகு தமிழிலோ ஆங்கிலத்திலோ எதை type செய்தாலும் உங்கள் குரலில் MP3 கிடைக்கும்.",
+              "Read a short Tamil passage aloud. We check the words and keep your voice sample only in this browser, not on our server. Then type anything in Tamil or English and get an MP3 in your voice.",
+              "ஒரு சிறிய தமிழ் பத்தியை சத்தமாக படியுங்கள். வார்த்தைகளை சரிபார்த்து, உங்கள் குரல் மாதிரியை இந்த browser-ல் மட்டும் வைக்கிறோம், எங்கள் server-ல் இல்லை. பிறகு தமிழிலோ ஆங்கிலத்திலோ எதை type செய்தாலும் உங்கள் குரலில் MP3 கிடைக்கும்.",
             )}
           </p>
           <p className="clone-rules">
@@ -1735,6 +1750,14 @@ export function Clone() {
                   {t("Delete my voice", "என் குரலை நீக்கு")}
                 </button>
               </div>
+              {!voice.ref && (
+                <p className="small">
+                  {t(
+                    "New: a closer copy of your voice. Delete this voice and record again to use it.",
+                    "புதியது: உங்கள் குரலுக்கு இன்னும் நெருக்கமான நகல். இந்த குரலை நீக்கி மீண்டும் பதிவு செய்தால் கிடைக்கும்.",
+                  )}
+                </p>
+              )}
               <textarea
                 className="clone-text"
                 value={text}
