@@ -371,6 +371,7 @@ kbd { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; pa
 .code-tabs button { padding: 6px 11px; border-radius: 8px; border: 0; cursor: pointer; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; background: transparent; color: #6d6a78; }
 .code-tabs button.on { background: rgb(255 255 255 / 0.1); color: #f4f2ee; }
 .code-tabs .code-copy { margin-left: auto; border: 1px solid rgb(255 255 255 / 0.14); color: #9b98a6; }
+.code-note { margin: 0; padding: 8px 14px; border-bottom: 1px solid rgb(255 255 255 / 0.08); font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; color: #ffb27a; }
 .code-box pre { margin: 0; padding: 22px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13.5px; line-height: 1.75; color: #d9d6e3; overflow-x: auto; min-height: 250px; }
 
 /* live agent overlay */
@@ -435,6 +436,19 @@ kbd { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; pa
 }
 @media (max-width: 960px) { .site-links { display: none; } .menu-btn { display: block; } .site-nav { justify-content: flex-end; } .site-brand { margin-right: auto; } }
 @media (min-width: 961px) { .mobile-menu { display: none; } }
+/* phones: the header must fit "SANSA AI" + search, account, language, theme and menu buttons (checked at 320-430 px) */
+.mobile-menu > .menu-theme { display: none; padding: 14px 0; font: inherit; font-size: 17px; text-align: left; color: var(--text); background: none; border: 0; border-bottom: 1px solid rgb(var(--ink) / 0.06); cursor: pointer; }
+@media (max-width: 420px) {
+  .site-nav { gap: 6px; padding: 10px 12px; justify-content: flex-start; }
+  .site-brand { font-size: 17px; gap: 7px; flex-shrink: 0; }
+  .site-brand .brand-mark { width: 24px; height: 24px; }
+  .lang-btn { padding-left: 10px; padding-right: 10px; }
+}
+@media (max-width: 360px) {
+  .site-nav { gap: 5px; padding: 10px; }
+  .site-nav > .theme-btn { display: none; }
+  .mobile-menu > .menu-theme { display: block; }
+}
 
 /* Product cards: titles line up across each row; badge in the corner */
 .prod { position: relative; justify-content: flex-start; min-height: 0; }

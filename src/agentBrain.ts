@@ -341,8 +341,8 @@ const INTENTS: Intent[] = [
   {
     id: "share",
     kw: ["share from whatsapp", "share to sansa", "share button", "share target", "from whatsapp", "open with", "share voice note"],
-    en: "Upload the voice note, or on Android add this site to your home screen, then in WhatsApp use Share and choose Sansa Voice.",
-    tam: "Voice note-ஐ upload பண்ணுங்க. அல்லது Android-ல இந்த site-ஐ home screen-ல சேர்த்து, WhatsApp-ல Share அழுத்தி Sansa Voice தேர்ந்தெடுங்க.",
+    en: "Upload the voice note, or on Android add this site to your home screen, then in WhatsApp use Share and choose SANSA AI.",
+    tam: "Voice note-ஐ upload பண்ணுங்க. அல்லது Android-ல இந்த site-ஐ home screen-ல சேர்த்து, WhatsApp-ல Share அழுத்தி SANSA AI தேர்ந்தெடுங்க.",
   },
   {
     id: "sitelang",

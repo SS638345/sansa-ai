@@ -80,7 +80,7 @@ export function toDocx(text: string, title: string): Blob {
   const para = (t: string, opts = "") => `<w:p>${t ? run(t, opts) : ""}</w:p>`;
   const body = [
     para(title, '<w:b/><w:sz w:val="32"/><w:szCs w:val="32"/>'),
-    para(`Sansa Voice · ${new Date().toLocaleString()}`, '<w:color w:val="777777"/><w:sz w:val="18"/><w:szCs w:val="18"/>'),
+    para(`SANSA AI · ${new Date().toLocaleString()}`, '<w:color w:val="777777"/><w:sz w:val="18"/><w:szCs w:val="18"/>'),
     para(""),
     ...text.split(/\r?\n/).map((l) => para(l, '<w:sz w:val="24"/><w:szCs w:val="24"/>')),
   ].join("");
@@ -109,7 +109,7 @@ export function printAsPdf(text: string, title: string): boolean {
   const html = `<!doctype html><html lang="ta"><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>@page{margin:18mm}body{font:15px/1.7 "Noto Sans Tamil","Nirmala UI","Latha",system-ui,sans-serif;color:#111}h1{font-size:20px;margin:0 0 4px}
 .meta{color:#777;font-size:12px;margin-bottom:18px}p{margin:0 0 10px;white-space:pre-wrap}</style></head>
-<body><h1>${esc(title)}</h1><div class="meta">Sansa Voice · ${esc(new Date().toLocaleString())}</div>
+<body><h1>${esc(title)}</h1><div class="meta">SANSA AI · ${esc(new Date().toLocaleString())}</div>
 ${text.split(/\r?\n/).map((l) => `<p>${esc(l) || "&nbsp;"}</p>`).join("")}
 </body></html>`;
   w.document.open();

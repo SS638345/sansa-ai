@@ -110,7 +110,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "How do I convert a WhatsApp voice note?",
-    a: "Upload the voice note, or on Android add this site to your home screen and use Share > Sansa Voice from WhatsApp.",
+    a: "Upload the voice note, or on Android add this site to your home screen and use Share > SANSA AI from WhatsApp.",
   },
 ];
 
@@ -714,7 +714,7 @@ export default function App() {
               onClick={() => {
                 const name = `sansa-voice-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, "-")}.docx`;
                 const a = document.createElement("a");
-                a.href = URL.createObjectURL(toDocx(text, tr("Sansa Voice text")));
+                a.href = URL.createObjectURL(toDocx(text, tr("SANSA AI text")));
                 a.download = name;
                 a.click();
                 setTimeout(() => URL.revokeObjectURL(a.href), 5000);
@@ -726,7 +726,7 @@ export default function App() {
             </button>
             <button
               onClick={() => {
-                if (!printAsPdf(text, tr("Sansa Voice text"))) setNotice(tr("Allow pop-ups for this site to save as PDF."));
+                if (!printAsPdf(text, tr("SANSA AI text"))) setNotice(tr("Allow pop-ups for this site to save as PDF."));
               }}
               disabled={!text}
               title={tr("Opens a print page: choose Save as PDF")}

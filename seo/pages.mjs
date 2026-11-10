@@ -68,7 +68,7 @@ export const PAGES = [
     tool: "tts-ta",
     nav: "Tamil Text to Speech",
     lang: "ta",
-    title: "Tamil Text to Speech Online Free | Natural Tamil AI Voice | SANSA",
+    title: "Tamil Text to Speech Online Free | Natural Tamil AI Voice | SANSA AI",
     description:
       "Free Tamil text to speech with natural female and male Tamil voices. Reads numbers, dates and English words in Tamil correctly. Download MP3.",
     h1: "Tamil Text to Speech with natural Tamil voices",
@@ -133,7 +133,7 @@ export const PAGES = [
     slug: "speech-to-text",
     tool: "stt",
     nav: "Speech to Text",
-    title: "Free Speech to Text & Voice to Text Online | Tamil, English, Indian Languages | SANSA",
+    title: "Free Speech to Text & Voice to Text Online | Tamil, English, Indian Languages | SANSA AI",
     description:
       "Convert speech to text free: live voice typing, recordings and audio files in Tamil, English and 15+ Indian languages. Export to Word, SRT subtitles or WhatsApp.",
     h1: "Free Speech to Text: voice typing and transcription online",
@@ -190,7 +190,7 @@ export const PAGES = [
     slug: "audio-to-text",
     tool: "audio",
     nav: "Audio to Text",
-    title: "Audio to Text Converter Online Free | Transcribe WhatsApp Voice Notes & Recordings | SANSA",
+    title: "Audio to Text Converter Online Free | Transcribe WhatsApp Voice Notes & Recordings | SANSA AI",
     description:
       "Upload an audio or video file and get the text. Transcribe WhatsApp voice notes, call recordings, meetings and lectures in Tamil, English and Indian languages. Free.",
     h1: "Audio to Text Converter: transcribe recordings and voice notes",
@@ -211,7 +211,7 @@ export const PAGES = [
       {
         h2: "WhatsApp voice notes on Android",
         paragraphs: [
-          "Add sansaai.in to your home screen. Then, in WhatsApp, long-press a voice note, tap Share and choose Sansa Voice. The note opens in SANSA ready to convert.",
+          "Add sansaai.in to your home screen. Then, in WhatsApp, long-press a voice note, tap Share and choose SANSA AI. The note opens in SANSA AI ready to convert.",
         ],
       },
       {
@@ -254,7 +254,7 @@ export const PAGES = [
     tool: "stt-ta",
     nav: "Tamil Speech to Text",
     lang: "ta",
-    title: "Tamil Speech to Text & Tamil Voice Typing Online Free | SANSA",
+    title: "Tamil Speech to Text & Tamil Voice Typing Online Free | SANSA AI",
     description:
       "Free Tamil voice typing and Tamil audio to text. Speak in Tamil or upload a Tamil recording and get Tamil script. Works with Tanglish and WhatsApp voice notes.",
     h1: "Tamil Speech to Text and Tamil voice typing",
@@ -315,12 +315,12 @@ export const PAGES = [
     slug: "voice-cloning",
     tool: "clone",
     nav: "Voice Cloning",
-    title: "AI Voice Cloning in Tamil & English (Your Own Voice Only) | SANSA",
+    title: "AI Voice Cloning in Tamil & English (Your Own Voice Only) | SANSA AI",
     description:
       "Clone your own voice from a 20-second Tamil reading and make MP3s in your voice in Tamil and English. Built-in check so only your own voice can be used. Free.",
     h1: "Voice Cloning: speak any text in your own voice",
     intro: [
-      "Read a short Tamil passage aloud (about 20 seconds). SANSA checks that you read the shown words, keeps your voice sample only in your browser, not on our server. Then type text in Tamil or English and get an MP3 in your voice.",
+      "Read a short Tamil passage aloud (about 20 seconds). SANSA checks that you read the shown words, keeps your voice sample only in your browser. When you make audio, the sample is sent with your text to our server in India, used in memory for that one request and not saved. Then type text in Tamil or English and get an MP3 in your voice.",
       "Only your own voice: because you must read a fresh random passage, a recording of someone else cannot be used.",
     ],
     sections: [
@@ -337,7 +337,7 @@ export const PAGES = [
         h2: "Safety and privacy",
         bullets: [
           "Your recording is not saved on our server.",
-          "Your voice sample stays only in your browser and is not saved on our server; you can delete it anytime.",
+          "Your voice sample is stored only in your browser. Our server uses it in memory for each request and does not save it; you can delete it anytime.",
           "Use it for your own content only, and tell listeners when a voice is AI.",
         ],
       },
@@ -371,7 +371,7 @@ export const PAGES = [
     slug: "voice-changer",
     tool: "changer",
     nav: "Voice Changer",
-    title: "AI Voice Changer Online: Change a Recording to Another Voice | SANSA",
+    title: "AI Voice Changer Online: Change a Recording to Another Voice | SANSA AI",
     description:
       "Change the voice in a recording while keeping the words and timing. Turn it into a SANSA female or male voice, or your own cloned voice. Up to 5 minutes, free.",
     h1: "AI Voice Changer: same words, a new voice",
@@ -423,7 +423,7 @@ export const PAGES = [
     slug: "audio-cleanup",
     tool: "cleanup",
     nav: "Audio Cleanup",
-    title: "Remove Background Noise from Audio Online Free | SANSA Audio Cleanup",
+    title: "Remove Background Noise from Audio Online Free | SANSA AI Audio Cleanup",
     description:
       "Remove background noise from voice recordings in your browser. Light, Normal or Strong cleanup for recordings up to 20 minutes. Your audio never leaves your device.",
     h1: "Audio Cleanup: remove background noise from voice recordings",

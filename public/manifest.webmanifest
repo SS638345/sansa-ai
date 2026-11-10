@@ -1,7 +1,7 @@
 {
-  "name": "Sansa Voice",
-  "short_name": "Sansa Voice",
-  "description": "Free Tamil voice to text and text to speech. Share a WhatsApp voice note to Sansa Voice to get the text.",
+  "name": "SANSA AI",
+  "short_name": "SANSA AI",
+  "description": "Free Tamil and English AI voice tools: speech to text, text to speech and more. Share a WhatsApp voice note to SANSA AI to get the text.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
