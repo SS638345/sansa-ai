@@ -113,6 +113,7 @@ const urls = [
   ["/privacy", "0.3"],
   ["/terms", "0.3"],
   ["/refund", "0.3"],
+  ["/security", "0.3"],
 ];
 writeFileSync(
   new URL("sitemap.xml", DIST),

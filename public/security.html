@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security &amp; Data — SANSA AI</title>
+  <meta name="description" content="How SANSA protects sansaai.in and your data: HTTPS, sign-in, audio not stored, browser-only voice prints, server isolation, encrypted backups and monitoring." />
+  <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}body{font-family:'Inter',sans-serif;background:#0B1020;color:#E2E8F0;line-height:1.8}
+    .grad-text{background:linear-gradient(90deg,#FF6B00,#FF3D00,#7C3AED,#2563EB);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .header{padding:20px 40px;display:flex;align-items:center;gap:16px;border-bottom:1px solid rgba(255,255,255,0.06)}
+    .header a{color:#94A3B8;text-decoration:none;font-size:14px}.header a:hover{color:#fff}
+    .logo{font-size:20px;font-weight:800;letter-spacing:-0.5px;color:#fff}
+    .content{max-width:800px;margin:0 auto;padding:60px 20px 80px}
+    .content h1{font-size:40px;font-weight:800;color:#fff;margin-bottom:8px;letter-spacing:-1px}
+    .content .date{color:#64748B;font-size:14px;margin-bottom:24px;display:block}
+    .content .summary{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px 20px;margin-bottom:24px}
+    .content h2{font-size:22px;font-weight:700;color:#fff;margin:32px 0 12px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06)}
+    .content h3{font-size:17px;font-weight:600;color:#fff;margin:20px 0 8px}
+    .content p{margin-bottom:16px;color:#CBD5E1;font-size:15px}
+    .content ul{margin:0 0 16px 24px}.content li{margin-bottom:8px;color:#CBD5E1;font-size:15px}
+    .content a{color:#60A5FA}
+    .content table{width:100%;border-collapse:collapse;margin:0 0 16px;font-size:14px}
+    .content th,.content td{text-align:left;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.08);color:#CBD5E1;vertical-align:top}
+    .content th{color:#fff}
+    .footer{text-align:center;padding:40px 20px;color:#64748B;font-size:13px;border-top:1px solid rgba(255,255,255,0.06)}
+    .footer a{color:#94A3B8;margin:0 8px}
+    @media (max-width:600px){.header{padding:16px 20px}.content h1{font-size:30px}.content table{font-size:13px}}
+  </style>
+  <link rel="canonical" href="https://sansaai.in/security">
+</head>
+<body>
+  <div class="header"><a href="/" class="logo"><span class="grad-text">SANSA</span> AI</a><a href="/">← Back to Home</a></div>
+  <div class="content">
+    <h1>Security &amp; Data</h1>
+    <span class="date">Last updated: 10 November 2026</span>
+
+    <p>This page explains, in plain words, how sansaai.in is protected. It describes what we actually do today; we do not claim certifications we do not have.</p>
+
+    <h2>Your data</h2>
+    <ul>
+      <li><b>Audio and text are not stored.</b> Our server converts them in memory and returns the result.</li>
+      <li><b>Many things never reach us:</b> other-language speech to text and Audio Cleanup run in your browser; your library and voice print live in your browser.</li>
+      <li><b>Sign-in with Google only.</b> We never see or store a password. Your session cookie is HttpOnly and Secure, and we keep only a scrambled copy of it.</li>
+      <li><b>Own voice only.</b> Voice cloning needs you to read a random passage that our speech engine checks, and the voice print is signed so it cannot be faked. The voice changer cannot copy another person's voice.</li>
+    </ul>
+
+    <h2>The website</h2>
+    <ul>
+      <li>HTTPS everywhere with HSTS; Cloudflare protects against attacks and floods.</li>
+      <li>A strict Content Security Policy only lets our own scripts run, and the site cannot be framed by other sites (clickjacking protection).</li>
+      <li>The voice engines refuse any request that is not signed in, and every tool has rate limits and size limits.</li>
+    </ul>
+
+    <h2>The server</h2>
+    <ul>
+      <li>The server is reached only through an encrypted Cloudflare tunnel; no ports are open to the internet or the local network.</li>
+      <li>The database and admin tools are not reachable from outside the server.</li>
+      <li>Each service runs in its own container with limited rights and memory.</li>
+      <li>Daily encrypted backups, with an encrypted copy stored off the server.</li>
+      <li>Health checks restart a stuck service automatically, and an outside monitor alerts us within about 10 minutes if the site goes down.</li>
+    </ul>
+
+    <h2>Report a problem</h2>
+    <p>If you find a security issue, please tell us privately at <a href="mailto:support@sansaai.in">support@sansaai.in</a> or the <a href="/contact">Contact page</a> and give us time to fix it before sharing it. Please do not test against other users' data or overload the service.</p>
+  </div>
+  <div class="footer"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refund">Refund</a><a href="/security">Security</a><a href="/contact">Contact</a><br>© 2026 SANSA AI · Chennai, Tamil Nadu, India</div>
+</body>
+</html>

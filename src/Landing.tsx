@@ -2248,6 +2248,7 @@ export function SiteFooter() {
             <a href="./privacy">{tr("Privacy")}</a>
             <a href="./terms">{tr("Terms of Use")}</a>
             <a href="./refund">{tr("Refund")}</a>
+            <a href="./security">{tr("Security")}</a>
           </Col>
         </div>
         <div className="foot-bottom">

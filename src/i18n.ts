@@ -92,6 +92,7 @@ const TA: Record<string, string> = {
   "Translate video and keep every voice.": "வீடியோவை மொழிபெயர்த்து அதே குரலில்.",
   "Voice Changer": "குரல் மாற்றி",
   "Audio to Text": "ஆடியோவை எழுத்தாக்கு",
+  "Security": "பாதுகாப்பு",
   "Tamil Speech to Text": "தமிழ் பேச்சை எழுத்தாக்கு",
   "Tamil Text to Speech": "தமிழ் எழுத்தை குரலாக்கு",
   "Turn one recording into any voice.": "ஒரு பதிவை வேறு குரலாக மாற்றும்.",
