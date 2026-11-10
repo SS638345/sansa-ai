@@ -28,6 +28,9 @@ export const useAuth = () =>
     () => state,
   );
 
+/** True when a visitor is signed in (used to skip engine calls that would only return 401). */
+export const isSignedIn = () => Boolean(state.user);
+
 export async function refreshUser() {
   try {
     const r = await fetch("/api/auth/me", { credentials: "same-origin" });
