@@ -111,10 +111,19 @@ export function printAsPdf(text: string, title: string): boolean {
 .meta{color:#777;font-size:12px;margin-bottom:18px}p{margin:0 0 10px;white-space:pre-wrap}</style></head>
 <body><h1>${esc(title)}</h1><div class="meta">Sansa Voice · ${esc(new Date().toLocaleString())}</div>
 ${text.split(/\r?\n/).map((l) => `<p>${esc(l) || "&nbsp;"}</p>`).join("")}
-<script>window.onload=()=>{setTimeout(()=>window.print(),300)}<\/script></body></html>`;
+</body></html>`;
   w.document.open();
   w.document.write(html);
   w.document.close();
+  // Print from this page: an inline <script> in the new window would be blocked by the site's CSP (2026-11-10 fix).
+  setTimeout(() => {
+    try {
+      w.focus();
+      w.print();
+    } catch {
+      /* window closed: nothing to print */
+    }
+  }, 400);
   return true;
 }
 

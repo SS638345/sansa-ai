@@ -21,7 +21,7 @@ import { CLONE_MAX_CHARS, LONG_TEXT_MAX_CHARS, SPEAK_MAX_CHARS } from "./limits"
 import { setUi, t, tr, useUi } from "./i18n";
 import { tamilToTanglish } from "./translit";
 import { Ic, bare } from "./icons";
-import { AuthButton, askLogin } from "./auth";
+import { AuthButton, askLogin, isSignedIn, useAuth } from "./auth";
 
 type Theme = "light" | "dark";
 type Lang = "en" | "ta";
@@ -85,6 +85,7 @@ const WARM_URL = "/tts/warm";
 const warmedAt: Partial<Record<Lang, number>> = {};
 /** Ask the voice engine to load this language now, so it is ready when the visitor presses play (at most once a minute). */
 function warmVoice(lang: Lang) {
+  if (!isSignedIn()) return; // the voice engine needs sign-in; a warm-up call would only get 401
   const now = Date.now();
   if (now - (warmedAt[lang] ?? 0) < 60_000) return;
   warmedAt[lang] = now;
@@ -239,7 +240,11 @@ export function HomeProvider({
 }) {
   const [lang, setLang] = useState<Lang>("en");
   const [voice, setVoice] = useState("meera");
-  useEffect(() => warmVoice(lang), [lang]);
+  // warm the voice once the visitor is known to be signed in (the engine refuses signed-out calls)
+  const { user: signedIn } = useAuth();
+  useEffect(() => {
+    if (signedIn) warmVoice(lang);
+  }, [lang, signedIn]);
   useEffect(() => warmVoice((VOICES.find((v) => v.id === voice) ?? VOICES[0]).lang), [voice]);
   const [playing, setPlaying] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -595,6 +600,20 @@ float light=0.04+t*0.18+lit*0.12+f*0.55;
 float g=mix(dark,light,uLight);
 gl_FragColor=vec4(vec3(clamp(g,0.0,1.0)),1.0);}`;
 
+/** Resolves after the page has loaded and the browser is idle (or 2.5 s at most). */
+function afterIdle(): Promise<void> {
+  return new Promise((ok) => {
+    const go = () =>
+      window.setTimeout(() => {
+        const ric = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+        if (ric) ric(() => ok(), { timeout: 2500 });
+        else ok();
+      }, 600);
+    if (document.readyState === "complete") go();
+    else window.addEventListener("load", go, { once: true });
+  });
+}
+
 function Orb() {
   const { theme } = useHome();
   const host = useRef<HTMLDivElement>(null);
@@ -612,7 +631,10 @@ function Orb() {
     if (!el) return;
     let stopped = false;
     let cleanup = () => {};
-    void import("three")
+    // Start the 3D orb only after the page has loaded and the browser is idle, so it does not delay the
+    // first paint or block the page (home page PageSpeed: TBT 1.3 s before this, 2026-11-10).
+    void afterIdle()
+      .then(() => import("three"))
       .then((T) => {
         if (stopped) return;
         let r: InstanceType<typeof T.WebGLRenderer>;
@@ -723,13 +745,35 @@ function Orb() {
           pts.rotation.y = -t * 0.04 + mouse.x * 0.15;
           r.render(scene, cam);
         };
+        let last = 0;
+        let slow = 0; // frames that took too long to draw
+        // Software rendering (no graphics chip: SwiftShader / llvmpipe, e.g. some laptops, VMs and test robots)
+        // draws each frame on the CPU and blocks the page, so show one still frame there.
+        let tooSlow = (() => {
+          try {
+            const gl = r.getContext();
+            const ext = gl.getExtension("WEBGL_debug_renderer_info");
+            const name = String(gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER) || "");
+            return /swiftshader|llvmpipe|software|basic render/i.test(name);
+          } catch {
+            return false;
+          }
+        })();
         const loop = (now: number) => {
-          frame(now);
-          if (visible) raf = requestAnimationFrame(loop);
+          if (now - last >= 33) {
+            // about 30 frames a second is smooth for a slow orb and halves the work on phones
+            last = now;
+            const t0 = performance.now();
+            frame(now);
+            // No graphics chip (or a very weak phone): a frame costs >40 ms and blocks taps and scrolling.
+            // After 3 such frames stop the animation; the orb stays visible as a still picture.
+            if (performance.now() - t0 > 40 && ++slow >= 3) tooSlow = true;
+          }
+          if (visible && !tooSlow) raf = requestAnimationFrame(loop);
         };
         const kickLoop = () => {
           cancelAnimationFrame(raf);
-          if (reduce) frame(0);
+          if (reduce || tooSlow) frame(0);
           else if (visible) raf = requestAnimationFrame(loop);
         };
 
