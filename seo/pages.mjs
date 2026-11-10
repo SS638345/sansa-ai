@@ -320,7 +320,7 @@ export const PAGES = [
       "Clone your own voice from a 20-second Tamil reading and make MP3s in your voice in Tamil and English. Built-in check so only your own voice can be used. Free.",
     h1: "Voice Cloning: speak any text in your own voice",
     intro: [
-      "Read a short Tamil passage aloud (about 20 seconds). SANSA checks that you read the shown words, builds a voice print and keeps it only in your browser. Then type text in Tamil or English and get an MP3 in your voice.",
+      "Read a short Tamil passage aloud (about 20 seconds). SANSA checks that you read the shown words, keeps your voice sample only in your browser, not on our server. Then type text in Tamil or English and get an MP3 in your voice.",
       "Only your own voice: because you must read a fresh random passage, a recording of someone else cannot be used.",
     ],
     sections: [
@@ -337,7 +337,7 @@ export const PAGES = [
         h2: "Safety and privacy",
         bullets: [
           "Your recording is not saved on our server.",
-          "Your voice print stays only in your browser; you can delete it anytime.",
+          "Your voice sample stays only in your browser and is not saved on our server; you can delete it anytime.",
           "Use it for your own content only, and tell listeners when a voice is AI.",
         ],
       },
