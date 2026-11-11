@@ -467,7 +467,7 @@ export function HomeProvider({
 
 /** SANSA logo: the red S mark (public/brand/sansa-mark.svg). */
 function OrbMark({ size = 28 }: { size?: number }) {
-  return <img className="brand-mark" src="/brand/sansa-mark.svg" width={size} height={size} alt="" aria-hidden="true" />;
+  return <img className="brand-mark" src="/brand/sansa-mark.svg" width={size} height={size} alt="SANSA AI logo" />;
 }
 
 const SearchIcon = () => <Ic.Search size={16} />;
@@ -489,7 +489,7 @@ export function SiteHeader() {
       <nav className="site-nav">
         <a className="site-brand" href="./">
           <OrbMark />
-          SANSA
+          SANSA AI
         </a>
         <div className="site-links">
           <a href="/#tools">{tr("Products")}</a>
@@ -546,6 +546,9 @@ export function SiteHeader() {
           <a href="/#faq" onClick={close}>
             {tr("FAQ")}
           </a>
+          <button className="menu-theme" onClick={() => { h.toggleTheme(); close(); }}>
+            {h.theme === "dark" ? tr("Light mode") : tr("Dark mode")}
+          </button>
           <div className="mobile-menu-actions">
             <AuthButton wide />
           </div>
@@ -1667,8 +1670,8 @@ export function Clone() {
           <h2>{t("Speak in your own voice.", "உங்கள் சொந்த குரலில் பேசுங்கள்.")}</h2>
           <p>
             {t(
-              "Read a short Tamil passage aloud. We check the words and keep your voice sample only in this browser, not on our server. Then type anything in Tamil or English and get an MP3 in your voice.",
-              "ஒரு சிறிய தமிழ் பத்தியை சத்தமாக படியுங்கள். வார்த்தைகளை சரிபார்த்து, உங்கள் குரல் மாதிரியை இந்த browser-ல் மட்டும் வைக்கிறோம், எங்கள் server-ல் இல்லை. பிறகு தமிழிலோ ஆங்கிலத்திலோ எதை type செய்தாலும் உங்கள் குரலில் MP3 கிடைக்கும்.",
+              "Read a short Tamil passage aloud. We check the words and keep your voice sample only in this browser. When you make audio, it is sent with your text, used in memory on our server and not saved. Type anything in Tamil or English and get an MP3 in your voice.",
+              "ஒரு சிறிய தமிழ் பத்தியை சத்தமாக படியுங்கள். வார்த்தைகளை சரிபார்த்து, உங்கள் குரல் மாதிரியை இந்த browser-ல் மட்டும் வைக்கிறோம். ஆடியோ உருவாக்கும்போது அது உங்கள் text-உடன் எங்கள் server-க்கு அனுப்பப்பட்டு, memory-ல் மட்டும் பயன்படுத்தப்படும், சேமிக்கப்படாது. தமிழிலோ ஆங்கிலத்திலோ எதை type செய்தாலும் உங்கள் குரலில் MP3 கிடைக்கும்.",
             )}
           </p>
           <p className="clone-rules">
@@ -2096,7 +2099,7 @@ export function Agents() {
         <div className="call-head">
           <span>
             <i className="st-dot idle" aria-hidden="true" />
-            {tr("Sample call · Clinic booking")}
+            {tr("Example script · Clinic booking")}
           </span>
           <span className="mono">01:24</span>
         </div>
@@ -2182,6 +2185,7 @@ export function Api() {
               {copied ? "Copied" : "Copy"}
             </button>
           </div>
+          <p className="code-note">{tr("Preview, not live yet. The API is coming soon.")}</p>
           <pre>{CODE[tab]}</pre>
         </div>
       </div>
@@ -2243,7 +2247,7 @@ export function SiteFooter() {
           <div className="foot-col">
             <span className="site-brand">
               <OrbMark size={24} />
-              SANSA
+              SANSA AI
             </span>
             <span className="foot-tag">{tr("AI voices for English and Tamil.")}</span>
           </div>
@@ -2262,7 +2266,7 @@ export function SiteFooter() {
             <a href="/#api">{tr("API")}</a>
           </Col>
           <Col title={tr("Support")}>
-            <a href={CONTACT}>{tr("Help Centre")}</a>
+            <a href={CONTACT}>{tr("Contact")}</a>
             <a href="/#faq">{tr("FAQ")}</a>
             <button className="link auth-btn foot-login" onClick={() => askLogin()}>{t("Sign in", "உள்நுழை")}</button>
           </Col>

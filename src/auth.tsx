@@ -238,7 +238,7 @@ function LoginModal() {
         <button className="auth-x" onClick={close} aria-label={t("Close", "மூடு")}>
           <Ic.X />
         </button>
-        <img src="/brand/sansa-mark.svg" width={44} height={44} alt="" aria-hidden="true" />
+        <img src="/brand/sansa-mark.svg" width={44} height={44} alt="SANSA AI logo" />
         <h2 id="auth-title">{t("Sign in to continue", "தொடர உள்நுழையுங்கள்")}</h2>
         <p>{t("Sign in with your Google account to use SANSA's free voice tools.", "SANSA-வின் இலவச குரல் கருவிகளைப் பயன்படுத்த உங்கள் Google account-ல் உள்நுழையுங்கள்.")}</p>
         <div className="auth-gbtn" ref={box} aria-busy={busy} />
@@ -272,7 +272,7 @@ export function AuthButton({ wide = false }: { wide?: boolean }) {
   return (
     <span className="auth-btn auth-user">
       <button className="auth-me" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={t(`Account: ${user.email}`, `கணக்கு: ${user.email}`)}>
-        {user.picture ? <img src={user.picture} alt="" width={28} height={28} referrerPolicy="no-referrer" /> : <span className="auth-initial">{first[0]?.toUpperCase()}</span>}
+        {user.picture ? <img src={user.picture} alt={user.name ? `${user.name} profile photo` : "Profile photo"} width={28} height={28} referrerPolicy="no-referrer" /> : <span className="auth-initial">{first[0]?.toUpperCase()}</span>}
         {wide && <span>{first}</span>}
       </button>
       {open && (

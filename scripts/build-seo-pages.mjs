@@ -3,7 +3,7 @@
 // JSON-LD (WebApplication + BreadcrumbList + FAQPage) and the page text as real HTML, so search
 // engines read it without running JavaScript. The React app then shows the page's tool between
 // the top and bottom text (App.tsx "landing mode", data-tool on #seo-page).
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { PAGES, SITE } from "../seo/pages.mjs";
 
 const DIST = new URL("../dist/", import.meta.url);
@@ -90,6 +90,10 @@ ${p.related.map((r) => `<li><a href="/${r}">${esc(bySlug[r].nav)}</a></li>`).joi
   h = replaceOnce(h, /<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${esc(p.title)}" />`, "og:title");
   h = replaceOnce(h, /<meta property="og:description" content="[^"]*" \/>/, `<meta property="og:description" content="${esc(p.description)}" />`, "og:description");
   h = replaceOnce(h, /<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${url}" />`, "og:url");
+  const og = `${SITE}/og/${p.slug}.png`; // made by scripts/make-og-images.py (1200x630)
+  h = replaceOnce(h, /<meta property="og:image" content="[^"]*" \/>/, `<meta property="og:image" content="${og}" />`, "og:image");
+  h = replaceOnce(h, /<meta property="og:image:alt" content="[^"]*" \/>/, `<meta property="og:image:alt" content="${esc(p.nav)}: SANSA AI" />`, "og:image:alt");
+  h = replaceOnce(h, /<meta name="twitter:image" content="[^"]*" \/>/, `<meta name="twitter:image" content="${og}" />`, "twitter:image");
   h = replaceOnce(h, /<script type="application\/ld\+json">[\s\S]*?<\/script>/, `<script type="application/ld+json">${ld(schema)}</script>`, "JSON-LD");
   h = replaceOnce(
     h,
@@ -101,6 +105,7 @@ ${p.related.map((r) => `<li><a href="/${r}">${esc(bySlug[r].nav)}</a></li>`).joi
 }
 
 for (const p of PAGES) {
+  must(existsSync(new URL(`og/${p.slug}.png`, DIST)), `${p.slug}: share image public/og/${p.slug}.png missing (run scripts/make-og-images.py)`);
   writeFileSync(new URL(`${p.slug}.html`, DIST), pageHtml(p));
 }
 
